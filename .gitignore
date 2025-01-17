@@ -1,0 +1,13 @@
+*.DS_Store
+
+*.aux        
+*.pdf        
+*.bcf        
+*.run.xml    
+*.toc
+*.log        
+*.synctex.gz
+*.out        
+*.tdo
+
+*.auctex-auto/
