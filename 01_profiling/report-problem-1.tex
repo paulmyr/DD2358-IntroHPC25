@@ -190,7 +190,7 @@
 %
 \section*{Prefix}
 \todo[inline]{Make sure title and headers are correctly changed!}
-\todo[inline]{Change counter to match excercise sheet}
+\todo[inline]{Change Author names and mails.}
 
 % content begin
 %
@@ -211,16 +211,38 @@ On the Apple Silicon M1, I recieved the following output, using the best out of 
 \end{lstlisting}
 
 \subsection{Timing the Julia set code functions}
+The M1-chip has a clock frequency of 3.2GHz.
+\todo[inline]{write anything useful here. I don't see any connection yet?}
+\begin{lstlisting}[language=bash,basicstyle=\ttfamily]
+  & python JuliaSet.py
+  number of runs: 20
+  desired width: 1000
+  max iterations: 300
+
+  calc_pure_python
+      mean: 2.39370298139911 s
+      std: 0.019263214648773588 s
+
+  calculate_z_serial_purepython
+      mean: 2.534685760299908 s
+      std: 0.02066843684620983 s
+\end{lstlisting}
+
 \subsection{Profile the Julia set code with cProfile and line\_profiler the computation}
+\todo[inline]{1.3: everything}
 \subsection{Memory-profile the Juliaset code. Use the memory\_profiler and mprof to profile the computation in JuliaSet code}
+\todo[inline]{1.4: everything}
 
 \newpage
 \section{Profiling Diffusion Process Code}
 \subsection{Profile the diffusion code with cProfile and line\_profiler the computation}
+\todo[inline]{2.1: everything}
 \subsection{Memory-profile the diffusion code. Use the memory\_profiler and mprof to profile the computation}
+\todo[inline]{2.2: everything}
 
 \newpage
 \section{Develop your profiler tool for monitoring CPU percentage use with psutil}
+\todo[inline]{3.1: everything}
 
 % content end
 %###############################################################################
