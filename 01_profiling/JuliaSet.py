@@ -1,5 +1,7 @@
 """Julia set generator without optional PIL-based image drawing"""
 import time
+from timeit import default_timer as timer
+
 from functools import wraps
 
 # area of complex space to investigate
@@ -10,9 +12,9 @@ c_real, c_imag = -0.62772, -.42193
 def timefn(fn):
     @wraps(fn)
     def measure_time(*args, **kwargs):
-        t1 = time.time()
+        t1 = timer()
         result = fn(*args, **kwargs)
-        t2 = time.time()
+        t2 = timer()
         print(f"@timefn: {fn.__name__} took {t2 - t1} seconds")
         return result
     return measure_time
@@ -51,10 +53,16 @@ def calc_pure_python(desired_width, max_iterations):
     end_time = time.time()
     secs = end_time - start_time
     print(calculate_z_serial_purepython.__name__ + " took", secs, "seconds")
+    # print(f"width:\t{desired_width}\noutput:\t{sum(output)}")
 
-    # This sum is expected for a 1000^2 grid with 300 iterations
-    # It ensures that our code evolves exactly as we'd intended
-    assert sum(output) == 33219980
+    if desired_width == 1000:
+        # This sum is expected for a 1000^2 grid with 300 iterations
+        assert sum(output) == 33219980
+    elif desired_width == 10000:
+        assert sum(output) == 3323787446
+    else:
+        print("no asserts for this dimension...")
+
 
 def calculate_z_serial_purepython(maxiter, zs, cs):
     """Calculate output list using Julia update rule"""
@@ -72,4 +80,4 @@ def calculate_z_serial_purepython(maxiter, zs, cs):
 if __name__ == "__main__":
     # Calculate the Julia set using a pure Python solution with
     # reasonable defaults for a laptop
-    calc_pure_python(desired_width=10000, max_iterations=300) 
+    calc_pure_python(desired_width=10000, max_iterations=300)

@@ -1,0 +1,231 @@
+
+\documentclass[a4paper,12pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[a4paper,
+            bindingoffset=0.2in,
+            left=1in,
+            right=1in,
+            top=1in,
+            bottom=1in,
+            footskip=.25in]{geometry}
+
+
+%###############################################################################
+
+%\input{~/layout/global_layout}
+
+
+%###############################################################################
+
+% packages begin
+
+\usepackage[
+  backend=biber,
+  sortcites=true,
+  style=alphabetic,
+  eprint=true,
+  backref=true
+]{biblatex}
+\addbibresource{bibliography.bib}
+
+\usepackage{euscript}[mathcal]
+% e.g. \mathcal{A} for fancy letters in mathmode
+\usepackage{amsmath,amssymb,amstext,amsthm}
+
+\usepackage{mdframed}
+\newmdtheoremenv[nobreak=true]{problem}{Problem}[subsection]
+\newmdtheoremenv[nobreak=true]{claim}{Claim}[subsection]
+\newtheorem{definition}{Definition}[subsection]
+\newtheorem{lemma}{Lemma}[claim]
+\newtheorem{plemma}{Lemma}[problem]
+
+\usepackage{mathtools}
+\DeclarePairedDelimiter\ceil{\lceil}{\rceil}
+\DeclarePairedDelimiter\floor{\lfloor}{\rfloor}
+
+\usepackage{enumerate}
+\usepackage[pdftex]{graphicx}
+\usepackage{subcaption}
+% 'draft' für schnelleres rendern mitübergeben -> [pdftex, draft]
+% dadruch wird nicht das bild mitgerendered, sondern nur ein kasten mit bildname -> schont ressourcen
+
+\usepackage{hyperref}
+
+\usepackage{tikz}
+\usetikzlibrary{arrows,automata,matrix,positioning,shapes}
+
+% for adding non-formatted text to include source-code
+\usepackage{listings}
+\lstset{language=Python,basicstyle=\footnotesize}
+% z.B.:
+% \lstinputlisting{source_filename.py}
+% \lstinputlisting[lanugage=Python, firstline=37, lastline=45]{source_filename.py}
+%
+% oder
+%
+% \begin{lstlisting}[frame=single]
+% CODE HERE
+%\end{lstlisting}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+\usepackage{wasysym}
+
+\usepackage{titling}
+\usepackage{titlesec}
+\usepackage[nocheck]{fancyhdr}
+\usepackage{lastpage}
+
+\usepackage{kantlipsum}
+\usepackage[colorinlistoftodos,prependcaption,textsize=tiny]{todonotes}
+
+% packages end
+%###############################################################################
+
+\pretitle{% add some rules
+  \begin{center}
+    \LARGE\bfseries
+} %, make the fonts bigger, make the title (only) bold
+\posttitle{%
+  \end{center}%
+  %\vskip .75em plus .25em minus .25em% increase the vertical spacing a bit, make this particular glue stretchier
+}
+\predate{%
+  \begin{center}
+    \normalsize
+}
+\postdate{%
+  \end{center}%
+}
+
+\titleformat*{\section}{\Large\bfseries}
+\titleformat*{\subsection}{\large\bfseries}
+\titleformat*{\subsubsection}{\normalsize\bfseries}
+
+\titleformat*{\paragraph}{\Large\bfseries}
+\titleformat*{\subparagraph}{\large\bfseries}
+
+%###############################################################################
+% TODO define Headers and Fotter
+
+\pagestyle{fancy}
+\fancyhf{}
+% l=left, c=center, r=right; e=even_pagenumber, o=odd_pagenumber; h=header, f=footer
+% example: [lh] -> left header, [lof,ref] -> fotter left when odd, right when even
+%\fancyhf[lh]{}
+%\fancyhf[ch]{}
+%\fancyhf[rh]{}
+%\fancyhf[lf]{}
+\fancyhf[cf]{\footnotesize Page \thepage\ of \pageref*{LastPage}}
+%\fancyhf[rf]{}
+\renewcommand{\headrule}{} % removes horizontal header line
+
+% Fotter options for first page
+
+\fancypagestyle{firstpagestyle}{
+  \renewcommand{\thedate}{\textmd{}} % removes horizontal header line
+  \fancyhf{}
+  \fancyhf[lh]{\ttfamily M.Sc. Computer Science\\KTH Royal Institute of Technology}
+  \fancyhf[rh]{\ttfamily Period 2\\\today}
+  \fancyfoot[C]{\footnotesize Page \thepage\ of \pageref*{LastPage}}
+  \renewcommand{\headrule}{} % removes horizontal header line
+}
+%###############################################################################
+% Todo: define Title
+
+\title{
+  \normalsize{DD2358 VT25 Introduction to}\\
+  \normalsize{High Performance Computing}\\
+  \large{Assignment X}\\
+}
+\author{
+  \small Author 1\\[-0.75ex]
+%  \footnotesize\texttt{MN: }\\[-1ex]
+  \scriptsize\texttt{xx@kth.se}
+  \and
+  \small Author 2\\[-0.75ex]
+%  \footnotesize\texttt{MN: }\\[-1ex]
+  \scriptsize\texttt{xx@kth.se}
+  \and
+  \small Author 3\\[-0.75ex]
+%  \footnotesize\texttt{MN: }\\[-1ex]
+  \scriptsize\texttt{xx@kth.se}
+  \and
+  \small Paul Mayer\\[-0.75ex]
+%  \footnotesize\texttt{MN: }\\[-1ex]
+  \scriptsize\texttt{pmayer@kth.se}
+}
+\date{}
+
+%###############################################################################
+% define Commands
+
+\newcommand{\N}{\mathbb{N}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\Z}{\mathbb{Z}}
+\newcommand{\I}{\mathbb{I}}
+
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Prob}{\mathbb{P}}
+
+\renewcommand{\epsilon}{\varepsilon}
+
+% Todo: Set Counter to Excercise Sheet Number
+%\setcounter{section}{1}
+%\setcounter{subsection}{1}
+
+%###############################################################################
+%###############################################################################
+
+\begin{document}
+\maketitle
+\thispagestyle{firstpagestyle}
+
+% \tableofcontents
+\listoftodos
+
+\vspace{1em}
+
+%---
+%
+\section*{Prefix}
+\todo[inline]{Make sure title and headers are correctly changed!}
+\todo[inline]{Change counter to match excercise sheet}
+
+% content begin
+%
+
+\section{Profiling the Julia Set Code}
+\subsection{Calculate the Clock Granularity of different Python Timers}
+For profiling we used the method given on the exercise page.
+On the Apple Silicon M1, I recieved the following output, using the best out of 1000 runs each:
+%\texttt{\$ python ClockGranularity.py}\\
+%\texttt{time.time: 7.152557373046875e-07 s}\\
+%\texttt{time.time\_ns: 7.680000000000001e-07 s}\\
+%\texttt{timeit.default\_timer: 8.300412446260452e-08 s}
+\begin{lstlisting}[language=bash,basicstyle=\ttfamily]
+  $ python ClockGranularity.py
+  time.time: 7.152557373046875e-07 s
+  time.time_ns: 7.680000000000001e-07 s
+  timeit.default_timer: 8.300412446260452e-08 s
+\end{lstlisting}
+
+\subsection{Timing the Julia set code functions}
+\subsection{Profile the Julia set code with cProfile and line\_profiler the computation}
+\subsection{Memory-profile the Juliaset code. Use the memory\_profiler and mprof to profile the computation in JuliaSet code}
+
+\newpage
+\section{Profiling Diffusion Process Code}
+\subsection{Profile the diffusion code with cProfile and line\_profiler the computation}
+\subsection{Memory-profile the diffusion code. Use the memory\_profiler and mprof to profile the computation}
+
+\newpage
+\section{Develop your profiler tool for monitoring CPU percentage use with psutil}
+
+% content end
+%###############################################################################
+
+% TODO: bibliograpghy when needed
+% \printbibliography
+
+\end{document}
