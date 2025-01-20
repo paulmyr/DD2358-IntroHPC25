@@ -147,9 +147,9 @@
 %  \footnotesize\texttt{MN: }\\[-1ex]
   \scriptsize\texttt{xx@kth.se}
   \and
-  \small Author 3\\[-0.75ex]
+  \small Lennart Herud\\[-0.75ex]
 %  \footnotesize\texttt{MN: }\\[-1ex]
-  \scriptsize\texttt{xx@kth.se}
+  \scriptsize\texttt{herud@kth.se}
   \and
   \small Paul Mayer\\[-0.75ex]
 %  \footnotesize\texttt{MN: }\\[-1ex]
@@ -475,6 +475,10 @@ Line #    Mem usage    Increment  Occurrences   Line Contents
     16   41.016 MiB    0.016 MiB      409600               new_grid[i][j] = grid[i][j] + D * (grid_xx + grid_yy) * dt
     17   41.016 MiB    0.000 MiB           1       return new_grid
 \end{lstlisting}\vspace{1em}
+
+By using \verb|memory_profiler| we observe that most of memory usage occurs during writing the immediate variables. 
+We believe that this the memory increase for the variable \verb|grid_yy| is already anticipated during the allocation
+of \verb|grid_xx|. 
 \verb|mprof| (10 iterations):
 \begin{figure}[h!]
   \centering
@@ -483,10 +487,24 @@ Line #    Mem usage    Increment  Occurrences   Line Contents
   \label{fig:diffusion-mprof}
 \end{figure}
 
+As for the \verb|mprof| profiling over 10 runs, we observe an asymptotic increase of memory usage. 
+We assume this behavior can be explained due to the garbage collection being carried out.
+
 \newpage
 \section{Develop your profiler tool for monitoring CPU percentage use with psutil}
-\todo[inline]{3.1: everything}
+\subsection{Design of the profiler tool}
 
+The code can be found at the Github repository:
+We utilize the \verb|psutil| library to read the core utilization. To implement this,
+ we spawn a thread which does poll the cpu-cores in a while loop using the \verb|psutil.cpu_percent()| 
+method. An exit condition is set to break out of the polling-loop, when we accumulated the predefined 
+amount of readings across all readable cores.  
+
+\subsection{Results}
+
+While running the 
+
+\subsection{Discussion}
 % content end
 %###############################################################################
 
