@@ -453,7 +453,35 @@ Non surprisingly, calculating the grid values takes the most amount of time.
 However, around 25\% of the total time spent was used to store the grid values, which seems high.
 
 \subsection{Memory-profile the diffusion code. Use the memory\_profiler and mprof to profile the computation}
-\todo[inline]{2.2: everything}
+
+\verb|memory_profiler| (one iteration):
+\begin{lstlisting}[language=bash,basicstyle=\tiny\ttfamily]
+Filename: DiffusionProcess.py
+
+Line #    Mem usage    Increment  Occurrences   Line Contents
+=============================================================
+     4   25.219 MiB   25.219 MiB           1   @profile
+     5                                         def evolve(grid, dt, D=1.0):
+     6   25.219 MiB    0.000 MiB           1       xmax, ymax = grid_shape
+     7   28.391 MiB    3.172 MiB         641       new_grid = [[0.0] * ymax for x in range(xmax)]
+     8   41.016 MiB    0.000 MiB         641       for i in range(xmax):
+     9   41.016 MiB    0.094 MiB      410240           for j in range(ymax):
+    10   41.016 MiB   12.469 MiB      409600               grid_xx = (
+    11   41.016 MiB    0.016 MiB      409600                   grid[(i + 1) % xmax][j] + grid[(i - 1) % xmax][j] - 2.0 * grid[i][j]
+    12                                                     )
+    13   41.016 MiB    0.016 MiB      409600               grid_yy = (
+    14   41.016 MiB    0.016 MiB      409600                   grid[i][(j + 1) % ymax] + grid[i][(j - 1) % ymax] - 2.0 * grid[i][j]
+    15                                                     )
+    16   41.016 MiB    0.016 MiB      409600               new_grid[i][j] = grid[i][j] + D * (grid_xx + grid_yy) * dt
+    17   41.016 MiB    0.000 MiB           1       return new_grid
+\end{lstlisting}\vspace{1em}
+\verb|mprof| (10 iterations):
+\begin{figure}[h!]
+  \centering
+  \includegraphics[width=\textwidth]{images/diffusion_mprofile}
+  \caption{Diffusion mprof plot}
+  \label{fig:diffusion-mprof}
+\end{figure}
 
 \newpage
 \section{Develop your profiler tool for monitoring CPU percentage use with psutil}
