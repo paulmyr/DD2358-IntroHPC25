@@ -1,7 +1,10 @@
+from timeit import default_timer as timer
+import cpuprofiler
+
 grid_shape = (640, 640)
 
 
-@profile
+# @profile
 def evolve(grid, dt, D=1.0):
     xmax, ymax = grid_shape
     new_grid = [[0.0] * ymax for x in range(xmax)]
@@ -35,6 +38,16 @@ def run_experiment(num_iterations):
     for i in range(num_iterations):
         grid = evolve(grid, 0.1)
 
+def do_cpu_usage_estimation():
+    cpu = cpuprofiler.CPUProfiler(granularity=5, interval=1, experiment_name="Diffusion Code")
+
+    cpu.initiate_observation()
+    run_experiment(500)
+    cpu.end_observation()
+
+    cpu.generate_usage_graph()
+    cpu.generate_tabular_summary()
 
 if __name__ == "__main__":
-    run_experiment(10)
+    run_experiment(500)
+    # do_cpu_usage_estimation()

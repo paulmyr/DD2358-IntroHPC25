@@ -2,6 +2,7 @@
 import numpy as np
 import time
 from timeit import default_timer as timer
+import cpuprofiler
 
 from functools import wraps
 
@@ -151,6 +152,15 @@ def do_profiling():
           f"calc_pure_python\n\tmean: {np.mean(t_outer)} s\n\tstd: {np.std(t_outer, dtype=np.float64)} s\n\n" + \
           f"calculate_z_serial_purepython\n\tmean: {np.mean(t_inner)} s\n\tstd: {np.std(t_inner, dtype=np.float64)} s")
 
+def do_cpu_usage_estimation():
+    cpu = cpuprofiler.CPUProfiler(granularity=5, interval=1, experiment_name="JuliaSet")
+
+    cpu.initiate_observation()
+    calc_pure_python(desired_width=5000, max_iterations=300)
+    cpu.end_observation()
+
+    cpu.generate_usage_graph()
+    cpu.generate_tabular_summary()
 
 
 if __name__ == "__main__":
@@ -158,7 +168,9 @@ if __name__ == "__main__":
     # reasonable defaults for a laptop
 
     # do_profiling()
-    t1 = timer()
-    calc_pure_python(desired_width=100, max_iterations=300)
-    t2 = timer()
-    print(f"total calculation time: {t2 - t1} s")
+    # t1 = timer()
+    # calc_pure_python(desired_width=100, max_iterations=300)
+    # t2 = timer()
+    # print(f"total calculation time: {t2 - t1} s")
+
+    do_cpu_usage_estimation()
