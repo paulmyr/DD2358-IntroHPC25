@@ -126,7 +126,7 @@
   \renewcommand{\thedate}{\textmd{}} % removes horizontal header line
   \fancyhf{}
   \fancyhf[lh]{\ttfamily M.Sc. Computer Science\\KTH Royal Institute of Technology}
-  \fancyhf[rh]{\ttfamily Period 2\\\today}
+  \fancyhf[rh]{\ttfamily Period 3\\\today}
   \fancyfoot[C]{\footnotesize Page \thepage\ of \pageref*{LastPage}}
   \renewcommand{\headrule}{} % removes horizontal header line
 }
@@ -136,16 +136,16 @@
 \title{
   \normalsize{DD2358 VT25 Introduction to}\\
   \normalsize{High Performance Computing}\\
-  \large{Assignment X}\\
+  \large{Assignment 1}\\
 }
 \author{
   \small Author 1\\[-0.75ex]
 %  \footnotesize\texttt{MN: }\\[-1ex]
   \scriptsize\texttt{xx@kth.se}
   \and
-  \small Author 2\\[-0.75ex]
+  \small Rishi Vijayvargiya\\[-0.75ex]
 %  \footnotesize\texttt{MN: }\\[-1ex]
-  \scriptsize\texttt{xx@kth.se}
+  \scriptsize\texttt{rishiv@kth.se}
   \and
   \small Lennart Herud\\[-0.75ex]
 %  \footnotesize\texttt{MN: }\\[-1ex]
@@ -195,6 +195,11 @@
 % content begin
 %
 
+\section{Code Repository}
+The code for this assignment can be found in the following github repository: \url{https://github.com/paulmyr/DD2358-HPC25/tree/master/01_profiling}. \\
+
+This contains the code for the timing decorator, the usage of the \verb|@profile| decorator, and the bonus activity (the CPU Usage Profiler), and other code used in this assignment.
+
 \section{Profiling the Julia Set Code}
 \subsection{Calculate the Clock Granularity of different Python Timers}
 For profiling we used the method given on the exercise page.
@@ -209,11 +214,12 @@ On the Apple Silicon M1, I recieved the following output, using the best out of 
   time.time_ns: 7.680000000000001e-07 s
   timeit.default_timer: 8.300412446260452e-08 s
 \end{lstlisting}
+The \verb|timeit.default_timer| seems to have the lowest granularity. Thus, this was deemed as the best timer and used for the other timing experiments. 
 
 \subsection{Timing the Julia set code functions}
 The M1-chip has a clock frequency of 3.2GHz.
 \begin{lstlisting}[language=bash,basicstyle=\ttfamily]
-  & python JuliaSet.py
+  $ python JuliaSet.py
   number of runs: 20
   desired width: 1000
   max iterations: 300
@@ -354,6 +360,8 @@ The total runtime was around $23 s$, which is a magnitude higher than the origin
   \label{fig:julia-mprofile}
 \end{figure}
 
+From the graph, it appears that most of the memory allocation for \verb|JuliaSet| was done in the \verb|calc_pure_python| function, as the memory usage has only a very slow increase during the execution of the \verb|calculate_z_serial_purepython| function. We can examine this further using the \verb|memory_profiler| \\
+
 Using the line-by-line \verb|memory_profiler| returns:
 \begin{lstlisting}[language=bash,basicstyle=\tiny\ttfamily]
 Length of x: 100
@@ -401,6 +409,7 @@ Line #    Mem usage    Increment  Occurrences   Line Contents
     77   30.531 MiB    0.000 MiB       10000           output[i] = n
     78   30.531 MiB    0.000 MiB           1       return output
 \end{lstlisting}
+
 
 \textbf{Overhead:}
 Running \verb|mprof| did not show any significant overhead compared to unprofiled code.
@@ -493,18 +502,64 @@ We assume this behavior can be explained due to the garbage collection being car
 \newpage
 \section{Develop your profiler tool for monitoring CPU percentage use with psutil}
 \subsection{Design of the profiler tool}
+Our basic idea in the implementation of the profiling tool was to call the \verb|cpu_percent()| function of the \verb|psutil| library at regular intervals of time: where the intended calling frequency would be specified by the user. The profiler would then call this function until the code to profile is executing. We would determine when the code to be profiled has finished executing based on a call to a demarcation function related to the profiler. 
 
-The code can be found at the Github repository:
-We utilize the \verb|psutil| library to read the core utilization. To implement this,
- we spawn a thread which does poll the cpu-cores in a while loop using the \verb|psutil.cpu_percent()| 
-method. An exit condition is set to break out of the polling-loop, when we accumulated the predefined 
-amount of readings across all readable cores.  
+Since we allow the user to specify how frequently during the execution of the code they want the CPU usage percentage to be determined, we also allow the user to specify the \verb|interval| for which the usage percentage is to be monitored \textit{on each call} to \verb|psutil.cpu_percent|. This \verb|interval| provided by the user would be used as the \verb|interval| argument of the \verb|cpu_percent| function, more information on which can be found \href{https://psutil.readthedocs.io/en/latest/#psutil.cpu_percent}{here}.
+
+Once the profiling has been completed, the user can then generate a graph showing the evolution of the usage percentages of the different CPU Cores in increments of time provided by the user at the time of initialization of the profiler. Additionally, to get more exact data in the form of tabular information printed to the screen, users can call a separate function: which will print the CPU Usage percentage per core over time, along with summary statistics: the average usage percentage per core over the course of the experiment, and the standard deviation in this usage percentage.
+
+\subsection{Implementation of the profiler tool}
+The implementation of the profiling tool can be found in the \verb|cpuprofiler.py| file of the GitHub repo for the assignment, located \href{https://github.com/paulmyr/DD2358-HPC25/blob/master/01_profiling/cpuprofiler.py}{here}. 
+
+We have implemented our profiling tool in a class called the \verb|CPUProfiler|. Since we allow the user to specify the granularity of the measurements (ie, how frequently through the course of the experiment the core usage is to be recorded) and the \verb|interval| argument to be passed to \verb|cpu_interval|, implementing the tool through a class felt the best way to preserve this and some other useful state. The class has 4 usable methods: \verb|initiate_observation|, \verb|end_observation|, \verb|generate_usage_graph|, \verb|generate_tabular_summary|.
+
+The \verb|initiate_observation| function spawns a separate thread which, at the frequency specified by the user during object instantiation, calls the \verb|cpu_percent| method and stores the results in an interval data structure. The \verb|interval| argument passed to the \verb|cpu_percent| method is the same as the \verb|interval| value specified by the user at object instantiation. This is done until the code to be profiled has finished execution. 
+
+The \verb|end_observation| method is responsible for stopping the profiling of the experiment code. Thus, this marks as the barrier which indicates to \verb|CPUProfiler| that the code being profiled has finished, and thus the periodic calls to \verb|cpu_percent| by \verb|initiate_observation| can end. This is done through a flag, whose value is changed by \verb|end_observation|.
+
+The \verb|generate_usage_graph| function is responsible for generating a plot of the CPU Core usage percentage over the course of the experiment. The \textit{x-}axis marks the elapsed time (in seconds), and the \textit{y-}axis marks the usage percentage. There is 1 line in the graph for each core on the system.
+
+The \verb|generate_tabular_summary| function is responsible for printing tabular information about the cpu usage of the profiled code to the screen. This prints fine-grained information: which is the usage-percentage for each core at each point of time (in terms of \textit{elapsed time} since measurement began) the usage was recorded, and it prints coarse-grained information: which is the mean usage-percentage and standard deviation for each core while the profiled code was being executed. We use the \verb|tabulate| library to help with the table generation. 
+
+Currently, we enforce that the \verb|granularity >= interval| at the time the \verb|CPUProfiler| is being created. This is because \verb|cpu_percent| is a blocking call, and some complications arise in the case when the execution of code in the monitoring thread (spawned by \verb|initiate_observation|) takes longer to execute than the points in time when observations are to be made. 
+
+The code provides more information on implementation and example usage through comments and docstrings.
 
 \subsection{Results}
+We profiled the \verb|JuliaSet| code and the \verb|DiffusionProcess| code using the function called \verb|do_cpu_usage_estimation| present in each file. For each of these measurements, we used the \verb|CPUProfiler| with \verb|granularity| set to 5 seconds and \verb|interval| set to 1 second. The Profiling was done on a 2021 MacBook Pro with Apple's M1 Chip, which has 10 CPU Cores. 
 
-While running the 
+For the \verb|JuliaSet| code, we profiled the call to \verb|calc_pure_python| with \verb|desired_width| set to 5000 and \verb|max_iterations| set to 300. On doing so, we got the following plot (through \verb|generate_usage_graph|)
+
+\begin{figure}[h!]
+  \centering
+  \includegraphics[width=\textwidth]{images/cpuprofile_juliaset.png}
+  \caption{CPU Usage Percentage Per Core for JuliaSet}
+  \label{fig:cpuprofiler_julia}
+\end{figure}
+
+The \verb|generate_tabular_summary| function generated tabular output which can be found in the repository \href{https://github.com/paulmyr/DD2358-HPC25/blob/master/01_profiling/outputs/cpuprofile_juliaset.output}{here} (copy-pasting the output proved to be difficult, as it contained encoding that wasn't easily recognized by \LaTeX). 
+
+For the \verb|DiffusionProcess| code, we profiled the call to \verb|run_experiment| with \verb|num_iterations| being 500. On doing so, we got the following plot (through the function \verb|generate_usage_graph|)
+
+\begin{figure}[h!]
+  \centering
+  \includegraphics[width=\textwidth]{images/cpuprofile_diffusion.png}
+  \caption{CPU Usage Percentage Per Core for DiffusionProcess}
+  \label{fig:cpuprofiler_diffusion}
+\end{figure}
+
+The \verb|generate_tabular_summary| function generated tabular output which can be found in the repository \href{https://github.com/paulmyr/DD2358-HPC25/blob/master/01_profiling/outputs/cpuprofile_diffusion.output}{here} (as above, copy-pasting proved to be difficult in \LaTeX). 
 
 \subsection{Discussion}
+We shall now briefly attempt to draw some conclusions from the result of the profiling above. 
+
+We would like to first mention that the presence of multiple cores and of background applications running on the machine makes it rather difficult to discern clearly observable evolution patterns in the impact of the code being profiled on CPU Usage: since the same process could go from being executed on one core to another (because of CPU Interrupts, for instance), and other processes could add to some noise in the observed usage percentages for the different cores. Nevertheless, we shall make our best attempt to deduce some findings. 
+
+Looking at the results for \verb|JuliaSet|, it seems evident that Cores 2, 3, and 4 seem to have been the most busy at different points in time during the course of the experiment. It thus seems plausible to hypothesize that these 3 cores could have been the ones being used in the computation at different periods of time. Of these 3 cores, Core 2 seems to be the most busy for the longest period of time. Thus, we believe that Core 2 could have been running the JuliaSet computation for the longest. The other cores seem to have minimal activity on them, which could mean that they were only being used by other processes while the experiment was being profiled.
+
+A similar pattern can be seen in the results for the \verb|DiffusionProcess| code. Here, Cores 2 and 3 seem to be the most busy over the time the experiment was being profiled. An interesting pattern can be seen at elapsed time 10sec and elapsed time 35sec. At 10sec, the busiest Core seems to switch from 2 to 3, and the reverse happens at 35sec. This could mean that the CPU switched the core on which the computation was being run when between the observations made at 5sec and 10sec, and the observations made at 30sec and 35sec. Of these 2 cores, it seems Core 2 was responsible for computation for the most amount of time. Like with the \verb|JuliaSet| results, it appears that the other cores had little to no involvement in the computation. 
+
+
 % content end
 %###############################################################################
 

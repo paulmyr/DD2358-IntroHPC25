@@ -49,5 +49,5 @@ def do_cpu_usage_estimation():
     cpu.generate_tabular_summary()
 
 if __name__ == "__main__":
-    run_experiment(500)
-    # do_cpu_usage_estimation()
+    # run_experiment(500)
+    do_cpu_usage_estimation()

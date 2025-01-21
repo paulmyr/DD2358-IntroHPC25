@@ -10,6 +10,21 @@ import numpy as np
 class CPUProfiler:
     """
     Can be used to determine the CPU usage percentage per core.
+
+    Usage: 
+    # Values for being used to instantiate profiler are dummy values.
+    profiler = CPUProfiler(experiment_name="Test", granularity=5, interval=1)
+    ....other code...
+
+    profiler.initiate_observation()
+    ...code to profile...
+    profiler.end_observation()
+
+    ...other code...
+    # Generates a graph showing evolution of usage over elapsed time
+    profiler.generate_usage_graph()
+    # Prints fine-grained and coarse-grained usage info in a pretty tabular format
+    profiler.generate_tabular_summary()
     """
 
     def __init__(self, experiment_name = "Experiment", granularity=0.1, interval=0.05):
@@ -55,6 +70,7 @@ class CPUProfiler:
                     curr_percent_usage = psutil.cpu_percent(interval=self.interval, percpu=True)
                     self.usage_info[self.time_elapsed] = curr_percent_usage
                     self.time_elapsed += self.granularity
+                # This helps get rid of "drift". See SO answer above for more.
                 next_call = next_call + self.granularity
                 time.sleep(next_call - timer())
             
@@ -84,6 +100,8 @@ class CPUProfiler:
 
     def _compute_corewise_percentage_cache(self):
         """
+        NOTE: THIS IS AN INTERNAL METHOD. NOT TO BE USABLE OUTSIDE THE CLASS.
+
         Computes an array of n arrays (where n is the number of cores). Each of these arrays in turn has 
         m entries (where m is the number of times cpu usage percentage was observed during the experiment).
         This information can then be used to generate plots.
@@ -156,7 +174,7 @@ class CPUProfiler:
         
         # Prints the fine grained statistics (usages of the cores at different points in terms of elapsed time)
         fancy_tabular_fine_grained = tabulate(ticks_with_per_core_usage, headers=fine_grained_headers, tablefmt="fancy_grid")
-        print("\n\n =============== CPU Profiler Fine-Grained and Coarse-Grained Data ===============")
+        print("\n\n =============== CPU Profiler Fine-Grained and Coarse-Grained Data =============== \n\n")
         print(" "*10 + f"Fine-Grained Information of Usage Percentages (per core) at Elapsed Times When Running {self.experiment_name}")
         print(fancy_tabular_fine_grained)
         print("\n\n\n")
