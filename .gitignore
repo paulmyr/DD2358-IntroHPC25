@@ -11,3 +11,4 @@
 *.tdo
 
 *.auctex-auto/
+*/__pycache__/
