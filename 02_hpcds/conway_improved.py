@@ -4,6 +4,7 @@ conway.py
 A simple Python/matplotlib implementation of Conway's Game of Life.
 
 Author: Mahesh Venkitachalam
+Vectorized for DD2358.
 """
 
 import argparse
@@ -55,46 +56,34 @@ def add_gosper_glider_gun(i, j, grid):
 
     grid[i : i + 11, j : j + 38] = gun
 
+def update_vectorized(_, img, grid, __):
+    """
+    The improved, vectorized version of game of life, supporting visualization as well 
+    through pyplot.
+    """
+    intermediate_grid = np.zeros(grid.shape)
 
-def update(frame_num, img, grid, n):
-    """
-    Updates the grid by applying the rules of Conway's Game of Life. The rules for the game
-    and more information on it can be found here:
-    https://www.geeksforgeeks.org/conways-game-life-python-implementation/
-    """
-    # copy grid since we require 8 neighbors for calculation
-    # and we go line by line
-    new_grid = grid.copy()
-    for i in range(n):
-        for j in range(n):
-            # compute 8-neghbor sum
-            # using toroidal boundary conditions - x and y wrap around
-            # so that the simulaton takes place on a toroidal surface.
-            total = int(
-                (
-                    grid[i, (j - 1) % n]
-                    + grid[i, (j + 1) % n]
-                    + grid[(i - 1) % n, j]
-                    + grid[(i + 1) % n, j]
-                    + grid[(i - 1) % n, (j - 1) % n]
-                    + grid[(i - 1) % n, (j + 1) % n]
-                    + grid[(i + 1) % n, (j - 1) % n]
-                    + grid[(i + 1) % n, (j + 1) % n]
-                )
-                / 255
-            )
-            # apply Conway's rules
-            if grid[i, j] == ON:
-                if (total < 2) or (total > 3):
-                    new_grid[i, j] = OFF
-            else:
-                if total == 3:
-                    new_grid[i, j] = ON
-    # update data
-    img.set_data(new_grid)
-    grid[:] = new_grid[:]
+    # Take the sum of the 8 neighbours, using in place operations 
+    intermediate_grid += np.roll(grid, (0, 1), (0, 1))
+    intermediate_grid += np.roll(grid, (0, -1), (0, 1))
+    intermediate_grid += np.roll(grid, (1, 0), (0, 1))
+    intermediate_grid += np.roll(grid, (-1, 0), (0, 1))
+    intermediate_grid += np.roll(grid, (1, 1), (0, 1))
+    intermediate_grid += np.roll(grid, (1, -1), (0, 1))
+    intermediate_grid += np.roll(grid, (-1, 1), (0, 1))
+    intermediate_grid += np.roll(grid, (-1, -1), (0, 1))
+    intermediate_grid /= 255
+
+    birth = (grid==OFF) & (intermediate_grid==3) 
+    die =  (grid==ON) & ((intermediate_grid < 2) | (intermediate_grid > 3))
+    grid[birth] = ON
+    grid[die] = OFF
+
+    # NOTE: This is the only piece of code different from the vecotirzed update
+    # found in the "conway_profile.py" file. This has been added to support 
+    # the visualization of the grid through matplotlib/pyplot
+    img.set_data(grid)
     return (img,)
-
 
 # main() function
 def main():
@@ -145,7 +134,7 @@ def main():
     img = ax.imshow(grid, interpolation="nearest")
     ani = animation.FuncAnimation(
         fig,
-        update,
+        update_vectorized,
         fargs=(
             img,
             grid,
