@@ -12,3 +12,4 @@
 
 *.auctex-auto/
 */__pycache__/
+*.lprof
