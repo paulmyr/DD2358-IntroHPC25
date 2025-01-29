@@ -63,7 +63,7 @@ def update(grid, n):
 
     grid[:] = new_grid[:]
 
-
+# @profile
 def update_vectorized(grid, n):
     "The vectorized version of the grid update in conway's game of life"
     intermediate_grid = np.zeros(grid.shape)
@@ -91,10 +91,10 @@ UPDATE_DICT = {
     "numpy_vectorized_update": update_vectorized
 }
 
+# @profile
 def profile_vanilla_computation(update_method_key):
     # grid sizes increase by powers of 2
     grid_sizes = [64, 128, 256, 512, 1024]
-    # grid_sizes = [64, 128]
     # times for each of the computations (in seconds)
     times = []
     # number of iterations for which the updates will happen
