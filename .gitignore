@@ -11,5 +11,5 @@
 *.tdo
 
 *.auctex-auto/
-*/__pycache__/
+**/__pycache__/
 *.lprof
