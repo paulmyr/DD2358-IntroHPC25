@@ -1,0 +1,78 @@
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+Result of running pylint on default file!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+(base) rishivijayvargiya@Rishis-MacBook-Pro 02_hpcds % pylint conway.py 
+************* Module conway
+conway.py:11:31: C0303: Trailing whitespace (trailing-whitespace)
+conway.py:24:38: C0303: Trailing whitespace (trailing-whitespace)
+conway.py:25:38: C0303: Trailing whitespace (trailing-whitespace)
+conway.py:59:28: C0303: Trailing whitespace (trailing-whitespace)
+conway.py:64:70: C0303: Trailing whitespace (trailing-whitespace)
+conway.py:66:62: C0303: Trailing whitespace (trailing-whitespace)
+conway.py:67:62: C0303: Trailing whitespace (trailing-whitespace)
+conway.py:68:74: C0303: Trailing whitespace (trailing-whitespace)
+conway.py:95:0: C0303: Trailing whitespace (trailing-whitespace)
+conway.py:100:0: C0303: Trailing whitespace (trailing-whitespace)
+conway.py:127:18: C0303: Trailing whitespace (trailing-whitespace)
+conway.py:80:0: R1707: Disallow trailing comma tuple (trailing-comma-tuple)
+conway.py:9:0: C0410: Multiple imports on one line (sys, argparse) (multiple-imports)
+conway.py:12:0: R0402: Use 'from matplotlib import animation' instead (consider-using-from-import)
+conway.py:18:0: C0103: Function name "randomGrid" doesn't conform to snake_case naming style (invalid-name)
+conway.py:18:15: C0103: Argument name "N" doesn't conform to snake_case naming style (invalid-name)
+conway.py:22:0: C0103: Function name "addGlider" doesn't conform to snake_case naming style (invalid-name)
+conway.py:29:0: C0103: Function name "addGosperGliderGun" doesn't conform to snake_case naming style (invalid-name)
+conway.py:57:0: C0116: Missing function or method docstring (missing-function-docstring)
+conway.py:57:11: C0103: Argument name "frameNum" doesn't conform to snake_case naming style (invalid-name)
+conway.py:57:32: C0103: Argument name "N" doesn't conform to snake_case naming style (invalid-name)
+conway.py:60:4: C0103: Variable name "newGrid" doesn't conform to snake_case naming style (invalid-name)
+conway.py:57:11: W0613: Unused argument 'frameNum' (unused-argument)
+conway.py:83:0: C0116: Missing function or method docstring (missing-function-docstring)
+conway.py:97:4: C0103: Variable name "N" doesn't conform to snake_case naming style (invalid-name)
+conway.py:99:8: C0103: Variable name "N" doesn't conform to snake_case naming style (invalid-name)
+conway.py:102:4: C0103: Variable name "updateInterval" doesn't conform to snake_case naming style (invalid-name)
+conway.py:104:8: C0103: Variable name "updateInterval" doesn't conform to snake_case naming style (invalid-name)
+conway.py:9:0: W0611: Unused import sys (unused-import)
+
+-----------------------------------
+Your code has been rated at 6.18/10
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+Output after running black conway.py!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+(base) rishivijayvargiya@Rishis-MacBook-Pro 02_hpcds % pylint conway.py 
+************* Module conway
+conway.py:9:0: C0410: Multiple imports on one line (sys, argparse) (multiple-imports)
+conway.py:12:0: R0402: Use 'from matplotlib import animation' instead (consider-using-from-import)
+conway.py:19:0: C0103: Function name "randomGrid" doesn't conform to snake_case naming style (invalid-name)
+conway.py:19:15: C0103: Argument name "N" doesn't conform to snake_case naming style (invalid-name)
+conway.py:24:0: C0103: Function name "addGlider" doesn't conform to snake_case naming style (invalid-name)
+conway.py:30:0: C0103: Function name "addGosperGliderGun" doesn't conform to snake_case naming style (invalid-name)
+conway.py:59:0: C0116: Missing function or method docstring (missing-function-docstring)
+conway.py:59:11: C0103: Argument name "frameNum" doesn't conform to snake_case naming style (invalid-name)
+conway.py:59:32: C0103: Argument name "N" doesn't conform to snake_case naming style (invalid-name)
+conway.py:62:4: C0103: Variable name "newGrid" doesn't conform to snake_case naming style (invalid-name)
+conway.py:59:11: W0613: Unused argument 'frameNum' (unused-argument)
+conway.py:95:0: C0116: Missing function or method docstring (missing-function-docstring)
+conway.py:111:4: C0103: Variable name "N" doesn't conform to snake_case naming style (invalid-name)
+conway.py:113:8: C0103: Variable name "N" doesn't conform to snake_case naming style (invalid-name)
+conway.py:116:4: C0103: Variable name "updateInterval" doesn't conform to snake_case naming style (invalid-name)
+conway.py:118:8: C0103: Variable name "updateInterval" doesn't conform to snake_case naming style (invalid-name)
+conway.py:9:0: W0611: Unused import sys (unused-import)
+
+------------------------------------------------------------------
+Your code has been rated at 7.76/10 (previous run: 6.18/10, +1.58)
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+Output after fixing issues and running “black” a couple more times                                !
+(NOTE: frame_num has not been removed because we believe it was needed for the animation function)!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+(base) rishivijayvargiya@Rishis-MacBook-Pro 02_hpcds % pylint conway.py
+************* Module conway
+conway.py:59:11: W0613: Unused argument 'frame_num' (unused-argument)
+
+------------------------------------------------------------------
+Your code has been rated at 9.87/10 (previous run: 9.74/10, +0.13)
