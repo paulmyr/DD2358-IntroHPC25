@@ -1,5 +1,5 @@
 """
-conway.py 
+conway_improved.py 
 
 A simple Python/matplotlib implementation of Conway's Game of Life.
 
