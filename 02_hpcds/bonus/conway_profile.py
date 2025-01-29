@@ -20,7 +20,8 @@ vals = [ON, OFF]
 
 def random_grid(n):
     """returns a grid of NxN random values"""
-    # TODO: Should we be setting a seed here? 
+    # Make sure we start off with the same grid, to get sort-of similar results of profiling
+    np.random.seed(42)
     return np.random.choice(vals, n * n, p=[0.2, 0.8]).reshape(n, n)
 
 
