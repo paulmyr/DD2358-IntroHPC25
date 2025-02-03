@@ -216,10 +216,10 @@ The average performance looks like this (note the log scale):
   \includegraphics[width=0.8\textwidth]{exercise2/graph.png}
   \caption{average performance}
 \end{figure}
-Increasing variance with bigger matrix sizes can be explained by the fact, that the load on a multi purpose operatin system varies a lot.
+Increasing variance with bigger matrix sizes can be explained by the fact, that the load on a multi purpose operating system varies a lot.
 The shorter the runtime, the less opportunity for the os to perform interrupts to do different computations (or wait for IO).
 With longer runtime, we expect more of these interrupts.
-Each interrupt in itself is very costly, however, these costs in itself may vary a lot, depending on the cause of the interrupt (IO, moving process to different core, ...).
+Each interrupt in itself is very costly, however, these costs in itself may vary a lot, depending on the cause of the interrupt (e.g. IO, moving process to different core, ...).
 
 \begin{figure}[H]
   \centering
@@ -233,13 +233,14 @@ Each interrupt in itself is very costly, however, these costs in itself may vary
   \caption{runtime results exercise 2}\label{tab:ex2}
 \end{figure}
 
-For the naïve martrix multiplication algorithm we can assume $2 \cdot n^{3}$ floating point operations (per inner loop: one addition, one multiplication).
+For the naïve matrix multiplication algorithm we can assume $2 \cdot n^{3}$ floating point operations (per inner loop: one addition, one multiplication).
 For a matrix of size 256, this makes 33,554,432 floating point operations.
 A Mac M1 chip has 3.2 GHz.
 Assuming one floating point operation per cycle, this results in 3.2e9 flop/s.
 Running at peak performance, we would assume
 $\frac{3.3e7 flop}{3.2e9flop/s} \approx 0.01s$ of runtime.
-Suprisingly, the numpy implementaion is very close ($+20\%$), however, shockingly bad is the performance of the naïve python implementation ($+7400\%$)!
+Surprisingly, the numpy implementation is very close ($+20\%$), which we assume is due to the efficiency of the matmul operation. The matmul operation is utilizing the BLAS library as stated in task 2.5, which
+ does take care of efficient cache utilization, and even architecture specific optimization e.g. ISA dependent operations. In contrast to that, we were surprised by the comparatively bad performance of the naïve python implementation ($+7400\%$)!
 
 \section{Experiment with the Python Debugger}
 \section{Bonus: Game of Life}
@@ -265,7 +266,7 @@ To prevent repitition, the results of timing the original \verb|update| code (bo
 
 \subsection{B.3: Profiling Existing Code}
 \label{sec:b3}
-We felt that the only function that was doing compute-heavy operations that would dictate the running time of the algorithm would be the \verb|update| function. Thus, we decided to use \verb|line_profiler| to profile the \verb|update| function. Inside this function, our hypothesis was that the operation to compute the \verb|total| for each grid celll would be the most computationally expensive operation. 
+We felt that the only function that was doing compute-heavy operations that would dictate the running time of the algorithm would be the \verb|update| function. Thus, we decided to use \verb|line_profiler| to profile the \verb|update| function. Inside this function, our hypothesis was that the operation to compute the \verb|total| for each grid cell would be the most computationally expensive operation.
 
 The profiling was done on the \verb|conway_profile.py| file -- which had the barebones implementation from \verb|conway.py| (without the special cases and visualizations, as described above). There, we decided to use \verb|line_profiler| on 2 functions -- the \textit{calling} function \verb|profile_vanilla_computation|, and the \textit{called} function \verb|update|. We performed only 1 run with 50 updates, on a grid of size $64 \times 64$. On doing so, we obtained the following results: 
 
