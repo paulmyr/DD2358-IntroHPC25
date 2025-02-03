@@ -1,6 +1,7 @@
 from timeit import default_timer as timer
 from mandelbrot_set_cython import generate_image_cython
 from mandelbrot_set_default import generate_image_default
+import matplotlib.pyplot as plt
 
 # Dictionary for different update method implementations
 GENERATE_DICT = {
@@ -35,23 +36,27 @@ def profile_generation(generate_method_key):
 
     return (grid_sizes, times)
 
-# def plot_data(running_times_classic, running_times_vectorized, grid_sizes):
-#     # Create a line plot with dots at each data point
-#     plt.loglog(grid_sizes, running_times_classic, marker='o', linestyle='-', color='b', label='classic running times')
-#     plt.loglog(grid_sizes, running_times_vectorized, marker='o', linestyle='-', color='r', label='vectorized running times')
+def plot_data(running_times_default, running_times_cython, running_times_torch, grid_sizes):
+    # Create a line plot with dots at each data point
+    plt.loglog(grid_sizes, running_times_default, marker='o', linestyle='-', color='b', label='default mandelbrot pure-python (m1 macbook pro)')
+    plt.loglog(grid_sizes, running_times_cython, marker='o', linestyle='-', color='r', label='cython mandelbrot (m1 macbook pro)')
+    plt.loglog(grid_sizes, running_times_torch, marker='o', linestyle="-", color="orange", label="torch mandelbrot (t4 colab gpu)")
 
 
-#     # Adding labels to the axes
-#     plt.xlabel('Grid Size')
-#     plt.ylabel('Running Time (s)')
+    # Adding labels to the axes
+    plt.xlabel('Grid Size')
+    plt.ylabel('Running Time (s)')
 
-#     # Adding a title to the plot
-#     plt.title('Time Taken for 50 Updates for Varying Grid Sizes (log-log)')
-#     plt.legend(loc='upper left')
-#     # Show the plot
-#     plt.show()
+    # Adding a title to the plot
+    plt.title('Times for Mandelbrot Set Gen for Different Square Grids with max 100 iters (log-log)')
+    plt.legend(loc='upper left')
+    # Show the plot
+    plt.show()
 
 if __name__ == "__main__":
-    grid_sizes, classic_times = profile_generation(generate_method_key="default_generate")
-    _, vectorized_times = profile_generation(generate_method_key="cython_generate")
-    # plot_data(classic_times, vectorized_times, grid_sizes)
+    grid_sizes, default_times = profile_generation(generate_method_key="default_generate")
+    _, cython_times = profile_generation(generate_method_key="cython_generate")
+    # Torch Times are hard-coded here but were obtained from "mandelbrot_torch.ipynb" notebook
+    # executed on Google Colabs T4 GPU. See Notebook for reference.
+    torch_times = [0.012661022200018125, 0.030808558399996855, 0.10812428999999497, 0.42733559330001186]
+    plot_data(default_times, cython_times, torch_times, grid_sizes)
