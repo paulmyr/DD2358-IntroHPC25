@@ -41,8 +41,8 @@ def generate_image_default(width, height):
 #       THIS HAS BEEN COMMENTED TO MAKE SURE MATPLOTLIB DOESN'T INTERFERE
 #       WITH PYTEST
 # ========================================================================
-# Parameters. The x and y min/max values are defined above. 
-# width, height = 1000, 800
+# # Parameters. The x and y min/max values are defined above. 
+# width, height = 2048, 2048
 
 # # Generate fractal
 # image = generate_image_default(width, height)

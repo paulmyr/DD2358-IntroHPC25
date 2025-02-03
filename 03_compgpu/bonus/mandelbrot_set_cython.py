@@ -19,9 +19,9 @@ def generate_image_cython(width, height):
 #       THIS HAS BEEN COMMENTED TO MAKE SURE MATPLOTLIB DOESN'T INTERFERE
 #       WITH PYTEST
 # ========================================================================
-# Generate fractal
-# Parameters
-# width, height = 1000, 800
+# # Generate fractal
+# # Parameters
+# width, height = 2048, 2048
 # image = generate_image_cython(width, height)
 
 # # Display
