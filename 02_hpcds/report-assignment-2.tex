@@ -196,9 +196,51 @@
 %
 
 \section*{Code Repository}
-The code for this assignment can be found in the following github repository: \url{https://github.com/paulmyr/DD2358-HPC25/tree/master/02_hpcds}.
+The code for this assignment can be found in the following github repository:
+\url{https://github.com/paulmyr/DD2358-HPC25/tree/master/02_hpcds}.
 \section{PyTest with the Julia Set Code}
 \section{Python DGEMM Benchmark Operation}
+The code for this task can be found under
+\url{https://github.com/paulmyr/DD2358-HPC25/tree/master/02_hpcds/exercise2}.\\
+The naive implementation of the DGEMM algorithm in python looks as follows:
+\lstinputlisting[language=Python,firstline=34,lastline=39,caption=From exercise2/exercise2.py]{exercise2/exercise2.py}
+We used numpys implementation to test against the naïve implementaiton.
+\lstinputlisting[language=Python,firstline=26,lastline=30,caption=From exercise2/exercise2.py]{exercise2/exercise2.py}
+\href{https://github.com/paulmyr/DD2358-HPC25/tree/master/02_hpcds/exercise2/test_exercise2.py}{Unit Tests} use parameterization and look like this:
+\lstinputlisting[language=Python,firstline=34,lastline=40,caption=From exercise2/test\_exercise2.py]{exercise2/test_exercise2.py}
+For time measurements (see \ref{tab:ex2}), we ran each experiment 20 times.
+Small matrices were 128x128, large marices were 256x256.
+The average performance looks like this (note the log scale):
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.8\textwidth]{exercise2/graph.png}
+  \caption{average performance}
+\end{figure}
+Increasing variance with bigger matrix sizes can be explained by the fact, that the load on a multi purpose operatin system varies a lot.
+The shorter the runtime, the less opportunity for the os to perform interrupts to do different computations (or wait for IO).
+With longer runtime, we expect more of these interrupts.
+Each interrupt in itself is very costly, however, these costs in itself may vary a lot, depending on the cause of the interrupt (IO, moving process to different core, ...).
+
+\begin{figure}[H]
+  \centering
+  \begin{tabular}{l|c|c}
+    name & avg (s) & variance (s)\\\hline
+    np small & 0.00095 & 9.328e-08\\
+    np large & 0.012 & 1.843e-07\\
+    py small & 0.920 & 0.00018\\
+    py large & 7.408 & 0.00398\\
+  \end{tabular}
+  \caption{runtime results exercise 2}\label{tab:ex2}
+\end{figure}
+
+For the naïve martrix multiplication algorithm we can assume $2 \cdot n^{3}$ floating point operations (per inner loop: one addition, one multiplication).
+For a matrix of size 256, this makes 33,554,432 floating point operations.
+A Mac M1 chip has 3.2 GHz.
+Assuming one floating point operation per cycle, this results in 3.2e9 flop/s.
+Running at peak performance, we would assume
+$\frac{3.3e7 flop}{3.2e9flop/s} \approx 0.01s$ of runtime.
+Suprisingly, the numpy implementaion is very close ($+20\%$), however, shockingly bad is the performance of the naïve python implementation ($+7400\%$)!
+
 \section{Experiment with the Python Debugger}
 \section{Bonus: Game of Life}
 For this task, we examined the code for \textit{Game of Life} found at this location: \url{https://github.com/electronut/pp/blob/master/conway/conway.py}. The working directory for our assignment code referenced in this section is the \verb|bonus/| directory found at this location: \url{https://github.com/paulmyr/DD2358-HPC25/tree/master/02_hpcds/bonus}. All the profiling, timing, and optimizations that follow were performed on a 2021 MacBook Pro with Apple's M1 Chip. More info on its specifications can be found \href{https://support.apple.com/en-us/111901}{here}.
