@@ -201,6 +201,83 @@ The code for this assignment can be found in the following github repository: \u
 \section{Gauss-Seidel for Poisson Solver}
 
 \section{Bonus: Fast Fractal Fun with Cython \& GPUs}
+The original Mandelbrot Set code provided in the assignment description can be found in the \verb|mandelbrot_set_default.py| file in the code-repository (\href{https://github.com/paulmyr/DD2358-HPC25/blob/master/03_compgpu/bonus/mandelbrot_set_default.py}{link}). The code to display the generated Mandelbrot Set has been commented out to allow for \verb|pytests| to be run against the file. All other code files related to the Bonus (mentioned or not mentioned in this report) can be found in the \verb|bonus/| directory of the code-repository.
+
+\subsection*{B.1: Cython Optimization of Baseline}
+To optimize the code with \verb|Cython|, we first examined the key areas where a large number of calls were being made to the Python virtual machine. For this, we extracted the \verb|mandelbrot| and the \verb|mandelbrot_set| functions from the original file into the file \verb|cython_mandelbrot.pyx| and then ran the \verb|cython -a cython_mandelbrot.pyx| command. 
+
+\verb|og_cython_mandelbrot.html| was the resulting HTML file and is present in the code-repository. Below we include a screenshot of the file
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.8\textwidth]{images/og_mandelbrot_cython.png}
+  \caption{Python VM Calls in the Original Mandelbrot Code}
+\end{figure}
+
+After this, we added type annotations to the parameters and the local variables of the functions \verb|mandelbrot| and \verb|mandelbrot_set|. We also used \underline{typed memory views} instead of Numpy arrays for the \verb|x_vals, y_vals, image| variables in the \verb|mandelbrot_set| function. Additionally, since the calculations for array addressing in the code are automatic (in the form of a counter of a loop within the bounds of the arrays), we also \underline{disabled bounds checking} for both the functions. We anticipated that this should have a noticeable impact for the \verb|mandelbrot_set| function. This is because in that function, we are using nested loops for iteration: so disabling bounds checking could make the inner loop iterations faster (thus making the outer loop iterations faster as well). 
+
+We then included the required building/setup code in \verb|setup.py| and used the command \verb|python3 setup.py build_ext --inplace| to get the \verb|.so| and \verb|.c| files (also present in the code repository for reference). 
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.8\textwidth]{images/after_annotate_mandelbrot.png}
+  \caption{Python VM Calls in the Annotated Mandelbrot Code}
+\end{figure}
+
+Finally, we used the generated \verb|cython_mandelbrot| module above in the new Python file called \verb|mandelbrot_set_cython.py| (\href{https://github.com/paulmyr/DD2358-HPC25/blob/master/03_compgpu/bonus/mandelbrot_set_cython.py}{link}). To verify that our optimizations return answers that are consistent with the original implementation, we also implemented \verb|pytests| in a file (\href{https://github.com/paulmyr/DD2358-HPC25/blob/master/03_compgpu/bonus/mandelbrot_cython_default_test.py}{link}) for 4 different sizes of square grids, but using the same $x$ and $y$ coordinates that were provided with the original code. 
+
+The result of the reduced calls to the Python VM because of our annotations can be seen in the HTML file above (\verb|cython_mandelbrot_after_annotate.html| is the name of the file in the code-repository), which was generated using the \verb|cython -a| command \textit{after} applying the annotations to the \verb|.pyx| file.
+
+\subsection*{B.2: Vectorization \& GPU Optimization of Baseline}
+The vectorized version of the original Mandelbrot Set code can be found in the \verb|mandelbrot_torch.ipynb| notebook (\href{https://github.com/paulmyr/DD2358-HPC25/blob/master/03_compgpu/bonus/mandelbrot_torch.ipynb}{link}). Instead of using 2 functions, we now only use one function -- \verb|mandelbrot_set_torch| -- because of the vectorization. We used \underline{PyTorch} to run the Mandelbrot computation on the GPU. The comments of the function explain our reasoning for the vectorization. We used the \underline{T4 GPU} presented on Google Colab as our GPU for this section.
+
+To get the \verb|x_vals| and \verb|y_vals| array as in the original code, we first used Numpy's \verb|linspace| method and then transformed that to a PyTorch tensor. This was required to ensure that we were able to correctly check the output of the vectorized code with the original output, and PyTorch's \verb|linspace| at times returned tensors with a higher precision than the ones returned by \verb|Numpy|: which at times caused difference in complex-number diversions. More specific information on this can be found in the comments in the notebook. 
+
+As alluded to earlier, we have a \underline{Correctess Verification} section which checks the output of the vectorized version against that produced by the original Mandelbrot Set code using square grids of 4 sizes. This is not implemented as a Pytest, but rather a simple equality check. 
+
+Finally, the notebook also compares the running time of the original code compared with the GPU version -- a plot of this along with specific timing info can be found at the end of the notebook. \\
+\textit{Note: A comparison of all 3 implementations follows in the next section.}
+
+\subsection*{B.3: Comparison of the 3 Approaches}
+To compare the running times of the 3 approaches, we used the code present in the \verb|mandelbrot_profile.py| file (\href{https://github.com/paulmyr/DD2358-HPC25/blob/master/03_compgpu/bonus/mandelbrot_profile.py}{link}). The running times for the PyTorch version of the original code were obtained on Google Colab T4 GPU and are the same as those present in the notebook mentioned in the section above. The Pure-Python (original) version and the Cython-ized version of the original code were both ran on an \underline{M1 MacBook Pro (16-inch, 2021)}. 
+
+We measured the running times of each implementation on square grids of 4 sizes: $256 \times 246, 512 \times 512, 1024 \times 1024$ and $2048 \times 2048$. The $x$ and $y$ coordinates were the same ones present in the original Mandelbrot Set code. We took the average running time over 10 runs for a grid as the final running time of the Mandelbrot implemention for that grid. The maximum number of iterations was 100. 
+
+Using this setup and approach, we obtained the following output on the terminal (the time below is in seconds): 
+
+\begin{lstlisting}[language=bash,basicstyle=\tiny\ttfamily]
+PROFILING COMPUTATION FOR default_generate (runs=10)
+Avg Time for 256x256: 0.15021454157540576
+Avg Time for 512x512: 0.5833664500853046
+Avg Time for 1024x1024: 2.3403198414947837
+Avg Time for 2048x2048: 9.467780166619923
+
+PROFILING COMPUTATION FOR cython_generate (runs=10)
+Avg Time for 256x256: 0.014089641778264194
+Avg Time for 512x512: 0.055262112594209614
+Avg Time for 1024x1024: 0.2187983958167024
+Avg Time for 2048x2048: 0.8719794083852321
+
+PROFILING COMPUTATION FOR torch_generate (runs=10) [-- taken from mandelbrot_torch.ipynb notebook]
+Avg Time for 256x256: 0.012661022200018125
+Avg Time for 512x512: 0.030808558399996855
+Avg Time for 1024x1024: 0.10812428999999497
+Avg Time for 2048x2048: 0.42733559330001186
+\end{lstlisting}
+
+The graphical version of the output is as follows (plotting the same times and grid sizes above in a $\log - \log$ plot)
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.8\textwidth]{images/bonus_comparison.png}
+  \caption{Mandelbrot Set Running Time Comparisons For Different Grid Sizes}
+\end{figure}
+
+As can be seen from the figure above, the original (pure-python) version of the code is \underline{significantly slower} than the 2 optimized versions. In comparison, the Cython optimization of the original code is around \underline{10x faster}, and the Pytorch optimized version ran on the GPU is almost \underline{20x faster}. 
+
+If we compare the Cython optimization of the original code to the PyTorch optimization (ran on the GPU), then the running times of the latter are \underline{almost 2x faster} than the former. This shows that vectorization and running the code on the GPU with PyTorch has noticeable benefits, but perhaps not as large a benefit as can be observed when comparing the PyTorch version with the pure-python (original implementation) version. The difference for the smallest grid ($256 \times 256$) also seems too small, but the 2x speedup starts becoming noticeable as the grid-sizes increase. 
+
+Thus, if we were to make any conclusions from this experiment, we would say that if resources were available, then one should go for the \underline{vectorized version ran on the GPU} (what we call the PyTorch version in the report) for the Mandelbrot set. However, if a GPU isn't easily available, then the speedup given by Cython is also very significant when compared to the original, pure-python code. 
+
 % \section{Appendix}
 
 % content end
