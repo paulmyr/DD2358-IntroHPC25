@@ -198,7 +198,21 @@
 \section*{Code Repository}
 The code for this assignment can be found in the following github repository:
 \url{https://github.com/paulmyr/DD2358-HPC25/tree/master/02_hpcds}.
+
 \section{PyTest with the Julia Set Code}
+\subsection{Separate PyTest for the Assertion}
+The original JuliaSet code can be found in the \verb|julia_set_original.py| file in the code repository under \verb|exercise1| (\href{https://github.com/paulmyr/DD2358-HPC25/tree/master/02_hpcds/exercise1/julia_set_original.py}{link}). We have commented out the \verb|main| function from this code along with the \verb|print| statements, and instead of asserting that the \verb|sum| of the \verb|output| array equals a certain value, we are now simply returning the \verb|output|. The assertion on the \verb|sum| of this returned array will be made in the relevant pytests. 
+
+The \verb|julia_set_test.py| |file contains the pytest code we wrote for this specific test case highlighted in the original code -- inside \verb|test_julia_set_1k_squre_300_iter|. We make an assertion on the \verb|sum| of the \verb|output| array returned by the \verb|calc_pure_python| function, ensuring it is equal to the number provided in the original file for a $1000 \times 1000$ grid with max 300 iterations. 
+
+\subsection{Parameterizing Tests}
+We can implement a \underline{parameterized unit test} using the \verb|pytest| framework to have a unit test with the possibility of having a different number of iterations and grid points. We can do this by using the \verb|@pytest.mark.parametrize| decorator for the unit-testing function we are interested in parameterizing, and then providing it with the names of the arguments for the parameterized test function, followed by a list of tuples corresponding to the respective values of the specified arguments in each run of the test. 
+
+This can be seen in the \verb|julia_set_test.py| file in the form of the testing function \verb|test_julia_set_parameterized|. For each tuple in the list mentioned above, the first two values correspond to the grid size and the max iterations for the run (respectively), and the third value in the tuple corresponds to the expected sum of the output array returned by the \verb|calc_pure_python| function. 
+
+In this way, we have written a single function to test 3 different cases, instead of having to implement a separate test for each use case (as was done for the explicitly provided example -- an approach which does not scale in the long run).  \\
+\textit{Note: The expected\_output\_sum in the parameterized test were obtained by explicitly taking the sum of the calc\_pure\_python output for the inputs of each of the mentioned test cases. There is a bit of circular logic here -- as we won't normally test that the output of a function is the same as the output of that function on the provided inputs. However, this was deemed resaonable here as the parameterization was only for demonstrative purposes.}
+
 \section{Python DGEMM Benchmark Operation}
 The code for this task can be found under
 \url{https://github.com/paulmyr/DD2358-HPC25/tree/master/02_hpcds/exercise2}.\\
@@ -484,7 +498,6 @@ Line #      Hits         Time  Per Hit   % Time  Line Contents
 
 Finally, for a more visual proof of the speedup with the help of the vectorized methods can be found in the video in the \verb|README.md| file of the \verb|bonus/| directory in the code-repo for this assignment (\href{https://github.com/paulmyr/DD2358-HPC25/blob/master/02_hpcds/bonus/README.md}{here}). Here, we run the original \verb|conway.py| file (with visualization enabled) and a \verb|conway_improved.py| file -- which is the same file as \verb|conway.py| but which uses the vectorized method to perform grid-updates. Both these files perform updates to a $512 \times 512$ grid. In the video, it is evident how slow the normal \verb|update| method is compared to the vectorized and optimized \verb|update_vectorized| method. \\
 \textit{Note: The grids might be different in the 2 implementations, since a seed was not used when initializing. Never-the-less, the clear visual difference in the speed of the updates to the grid remains evident.}
-\section{Appendix}
 
 % content end
 %###############################################################################
