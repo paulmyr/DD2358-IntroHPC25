@@ -256,7 +256,77 @@ $\frac{3.3e7 flop}{3.2e9flop/s} \approx 0.01s$ of runtime.
 Surprisingly, the numpy implementation is very close ($+20\%$), which we assume is due to the efficiency of the matmul operation. The matmul operation is utilizing the BLAS library as stated in task 2.5, which
  does take care of efficient cache utilization, and even architecture specific optimization e.g. ISA dependent operations. In contrast to that, we were surprised by the comparatively bad performance of the naïve python implementation ($+7400\%$)!
 
+
 \section{Experiment with the Python Debugger}
+
+\subsection{Introduction to pdb}
+pdb is Python’s built-in debugger that allows developers to pause program execution and inspect variables, step through code, and diagnose issues interactively. Unlike IDE-based debuggers in PyCharm or VS Code, pdb runs directly in the command line, making it particularly useful in environments where graphical tools are unavailable.
+
+\subsection{Essential Commands}
+Here are some of the most commonly used pdb commands:
+
+\begin{itemize}
+    \item \texttt{step} (\texttt{s}) – Executes the current line and moves into function calls if applicable.
+    \item \texttt{next} (\texttt{n}) – Runs the next line without stepping into functions.
+    \item \texttt{continue} (\texttt{c}) – Resumes execution until a breakpoint is encountered.
+    \item \texttt{return} (\texttt{r}) – Runs until the current function returns.
+    \item \texttt{list} (\texttt{l}) – Displays a portion of the source code around the current line.
+\end{itemize}
+
+Shortened versions of these commands (e.g., \texttt{s} for \texttt{step}) make debugging more efficient.
+
+\subsection{pdb vs. IDE Debuggers}
+Modern IDEs like PyCharm and VS Code provide graphical debugging tools, making it easier to track variables, set breakpoints, and step through code visually. However, pdb has several advantages:
+
+\begin{itemize}
+    \item \textbf{Accessibility:} Since pdb is part of Python’s standard library, it works in any environment without requiring additional setup.
+    \item \textbf{Lightweight:} pdb has minimal overhead compared to full IDE debugging environments, making it ideal for debugging on remote servers or in resource-constrained settings.
+    \item \textbf{Flexibility:} While IDEs provide an intuitive interface, pdb allows for precise control over program execution through the command line.
+\end{itemize}
+
+\subsection{Using pdb in Practice}
+pdb can be activated either by inserting breakpoints directly in the code or by launching the debugger from the command line:
+
+\begin{lstlisting}[language=Python]
+# Method 1: Setting a breakpoint in code
+import pdb; pdb.set_trace()
+
+# Method 2: Running a script with pdb
+python -m pdb script.py
+\end{lstlisting}
+
+From Python 3.7 onwards, the built-in \texttt{breakpoint()} function offers a more convenient alternative:
+
+\begin{lstlisting}[language=Python]
+# Using the built-in breakpoint function
+breakpoint()
+\end{lstlisting}
+
+\subsection{Post-mortem Debugging}
+pdb also supports post-mortem debugging, which allows developers to inspect the program state after an unhandled exception:
+
+\begin{lstlisting}[language=Python]
+import pdb
+pdb.pm()  # Enter post-mortem debugging after an exception
+\end{lstlisting}
+
+This is particularly useful for diagnosing issues in production environments or analyzing complex errors without needing to rerun the program.
+
+\subsection{When to Use pdb}
+pdb is especially useful in scenarios such as:
+
+\begin{itemize}
+    \item Debugging in environments where IDEs are unavailable.
+    \item Quickly inspecting program state without setting up a full debugging session.
+    \item Remote debugging over SSH or on cloud-based systems.
+    \item Working in lightweight or resource-constrained environments.
+\end{itemize}
+
+\subsection{Conclusion}
+While pdb lacks the graphical features of modern IDE debuggers, its flexibility and universal availability make it an essential tool for Python developers. Combining knowledge of pdb with IDE-based debugging techniques provides a well-rounded approach to troubleshooting and debugging Python programs.
+
+
+
 \section{Bonus: Game of Life}
 For this task, we examined the code for \textit{Game of Life} found at this location: \url{https://github.com/electronut/pp/blob/master/conway/conway.py}. The working directory for our assignment code referenced in this section is the \verb|bonus/| directory found at this location: \url{https://github.com/paulmyr/DD2358-HPC25/tree/master/02_hpcds/bonus}. All the profiling, timing, and optimizations that follow were performed on a 2021 MacBook Pro with Apple's M1 Chip. More info on its specifications can be found \href{https://support.apple.com/en-us/111901}{here}.
 \subsection{B.1: Linting and Documentation}
@@ -386,16 +456,16 @@ To summarize, we used the \verb|roll| functionality of a \verb|numpy| array to c
 
 Additionally, we also leveraged the use of \underline{in-place operations}, that is, using \verb|A += B| instead of \verb|A = A + B|. We could have implemented a threshold till which we used the \verb|A = A + B| syntax, switching to \verb|A += B| once the grid-size exceeds this threshold, but the speedup we obtained using \textit{only} in-place operations seemed promising enough to us to feel that such thresholding might not be needed. 
 
-To ensure that performing these optimizations does not give us incorrect updates, we also wrote some tests for different grid sizes in the \verb|conway_test.py| file. These tests perform 10 updates on the same grid (the use of the \verb|seed| value of 42 ensures the grids are the same) using 2 methods -- the sub-optimal \verb|update| and the optimized \verb|update_vectorized|. At the end of these 10 updates, we ensure that both the grids are the same. These tests pass for the optimization implemented. 
-
-After implementing the optimized method and ensuring its correctness, we timed how long it took to perform 50 updates to grids of sizes $64 \times 64, 128 \times 128, \dots, 1024 \times 1024$, averaged over 10 runs. We obtained the following $\log - \log$ plot of the running-time vs the grid size (on the Macbook described at the beginning of the section)
-
 \begin{figure}[h!]
   \centering
   \includegraphics[width=\textwidth]{images/sub_v_vec_conway.png}
   \caption{Log-Log Plot of Running Times for the 2 Implemenations (varying grid sizes)}
   \label{fig:conway_docs}
 \end{figure}
+
+To ensure that performing these optimizations does not give us incorrect updates, we also wrote some tests for different grid sizes in the \verb|conway_test.py| file. These tests perform 10 updates on the same grid (the use of the \verb|seed| value of 42 ensures the grids are the same) using 2 methods -- the sub-optimal \verb|update| and the optimized \verb|update_vectorized|. At the end of these 10 updates, we ensure that both the grids are the same. These tests pass for the optimization implemented. 
+
+After implementing the optimized method and ensuring its correctness, we timed how long it took to perform 50 updates to grids of sizes $64 \times 64, 128 \times 128, \dots, 1024 \times 1024$, averaged over 10 runs. We obtained the $\log - \log$ plot of the running-time vs the grid size (on the Macbook described at the beginning of the section) as seen in Figure 4.
 
 In the textual format, these were the running times that were visualized in the plot above:
 
