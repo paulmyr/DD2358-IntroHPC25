@@ -1,0 +1,55 @@
+PROFILED ON: MacBook Pro (16-inch, 2021) [https://support.apple.com/en-us/111901]
+
+$ python3 -m kernprof -l gauss_seidel_base.py
+Running Gauss-Seidel Solver with grid: 512 and iters: 100
+Wrote profile results to gauss_seidel_base.py.lprof
+Inspect results with:
+python3 -m line_profiler -rmt "gauss_seidel_base.py.lprof"
+$ python3 -m line_profiler -rmt "gauss_seidel_base.py.lprof"
+Timer unit: 1e-06 s
+
+Total time: 25.0401 s
+File: gauss_seidel_base.py
+Function: gauss_seidel at line 6
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+     6                                           @profile                                                         
+     7                                           def gauss_seidel(f):                                             
+     8                                               """                                                          
+     9                                               The simple, base, version of the gauss_seidel solver provided
+    10                                               to us in the assignment description.                         
+    11                                               """                                                          
+    12       100      16994.0    169.9      0.1      newf = f.copy()                                              
+    13                                                                                                            
+    14     51100       4640.0      0.1      0.0      for i in range(1,newf.shape[0]-1):                           
+    15  26061000    2412554.0      0.1      9.6          for j in range(1,newf.shape[1]-1):                       
+    16  78030000   14972364.0      0.2     59.8              newf[i,j] = 0.25 * (newf[i,j+1] + newf[i,j-1] +      
+    17  52020000    7633499.0      0.1     30.5                                     newf[i+1,j] + newf[i-1,j])    
+    18                                                                                                            
+    19       100         60.0      0.6      0.0      return newf                                                  
+
+
+Total time: 42.2158 s
+File: gauss_seidel_base.py
+Function: solve_posisson at line 21
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+    21                                           @profile                                                                      
+    22                                           def solve_posisson(base_grid, num_iters):                                     
+    23                                               """                                                                       
+    24                                               Calls the gauss_seidel method on the grid "num_iters" number of times.    
+    25                                               The grid should be initialized properly (ie, must be a square grid with 0s
+    26                                               at the boundary.)                                                         
+    27                                                                                                                         
+    28                                               The grid utilized here is initialzied using numpy                         
+    29                                               """                                                                       
+    30       101         16.0      0.2      0.0      for i in range(num_iters):                                                
+    31       100   42215741.0 422157.4    100.0          base_grid = gauss_seidel(base_grid)                                   
+    32                                                                                                                         
+    33         1          0.0      0.0      0.0      return base_grid                                                          
+
+
+ 25.04 seconds - gauss_seidel_base.py:6 - gauss_seidel
+ 42.22 seconds - gauss_seidel_base.py:21 - solve_posisson
