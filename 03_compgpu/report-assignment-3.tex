@@ -199,6 +199,27 @@
 The code for this assignment can be found in the following github repository: \url{https://github.com/paulmyr/DD2358-HPC25/tree/master/03_compgpu}.
 
 \section{Gauss-Seidel for Poisson Solver}
+\subsection{Task 1.2: Profiling Code using lineprofiler}
+
+Total time: 62.731 s
+File: .\03_compgpu\exercise1\poisson_solver.py
+Function: numpy_pure_gauss_seidel at line 8
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+     8                                           @profile
+     9                                           def numpy_pure_gauss_seidel(f):
+    10      5000      33409.1      6.7      0.1      newf = f.copy()
+    11
+    12    243000      93182.7      0.4      0.1      for i in range(1,newf.shape[0]-1):
+    13  21090000    8332316.0      0.4     13.3          for j in range(1,newf.shape[1]-1):
+    14  62556000   35721824.4      0.6     56.9              newf[i,j] = 0.25 * (newf[i,j+1] + newf[i,j-1] +
+    15  41704000   18544127.1      0.4     29.6                                  newf[i+1,j] + newf[i-1,j])
+    16
+    17      5000       6168.0      1.2      0.0      return newf
+
+Total time: 99.7621 s
+
 
 \section{Bonus: Fast Fractal Fun with Cython \& GPUs}
 The original Mandelbrot Set code provided in the assignment description can be found in the \verb|mandelbrot_set_default.py| file in the code-repository (\href{https://github.com/paulmyr/DD2358-HPC25/blob/master/03_compgpu/bonus/mandelbrot_set_default.py}{link}). The code to display the generated Mandelbrot Set has been commented out to allow for \verb|pytests| to be run against the file. All other code files related to the Bonus (mentioned or not mentioned in this report) can be found in the \verb|bonus/| directory of the code-repository.

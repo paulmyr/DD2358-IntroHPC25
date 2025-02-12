@@ -2,7 +2,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 from timeit import default_timer as timer
 
+from line_profiler import profile
+import cythonpoisson
 
+
+@profile
 def numpy_pure_gauss_seidel(f):
     newf = f.copy()
 
@@ -13,7 +17,7 @@ def numpy_pure_gauss_seidel(f):
 
     return newf
 
-
+@profile
 def run_pure_numpy(N, num_iterations):
     np.random.seed(42)
     grid = np.random.rand(N, N)
@@ -21,7 +25,7 @@ def run_pure_numpy(N, num_iterations):
     grid[:,0] = 0
 
     for _ in range(num_iterations):
-        grid = numpy_pure_gauss_seidel(grid)
+        grid = cythonpoisson.numpy_pure_gauss_seidel(grid)
 
 
 def timed(f, *args, **kwargs):
@@ -32,7 +36,7 @@ def timed(f, *args, **kwargs):
 
 
 def run_function_as_experiment(f, num_iterations = 1000):
-    n = [2**i for i in range(3, 8)]
+    n = [2**i for i in range(7, 8)]
     wtimes = [timed(f, i, num_iterations) for i in n]
 
     print(f"ran {f.__name__}")
