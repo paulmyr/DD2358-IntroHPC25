@@ -61,12 +61,13 @@ def run_function_as_experiment(f, num_iterations = 100):
     plt.plot(grid_sizes, wtimes, label=f"{f.__name__} (m1 (16') macbook pro, 2021)", marker='o')
 
 def save_1024_grid_hdf5():
-    pure_python_result = solve_poisson(1024, 50, purepythonpoisson.numpy_pure_gauss_seidel)
-    cython_result = solve_poisson(1024, 50, cythonpoisson.numpy_cython_gauss_seidel)
+    pure_python_result = solve_poisson(purepythonpoisson.numpy_pure_gauss_seidel, 1024, 50)
+    cython_result = solve_poisson(cythonpoisson.numpy_cython_gauss_seidel, 1024, 50)
 
     f = h5py.File("matrix_python_cython.hdf5", "w")
     f["/1024/pure_python"] = pure_python_result
     f["/1024/cython"] = cython_result
+    f.close()
 
 
 # This is used to run the profliing experiment for the default python implementation
