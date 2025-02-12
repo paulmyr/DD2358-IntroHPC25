@@ -3,21 +3,9 @@ import matplotlib.pyplot as plt
 from timeit import default_timer as timer
 
 from line_profiler import profile
-import cythonpoisson
+import purepythonpoisson
 
-
-@profile
-def numpy_pure_gauss_seidel(f):
-    newf = f.copy()
-
-    for i in range(1,newf.shape[0]-1):
-        for j in range(1,newf.shape[1]-1):
-            newf[i,j] = 0.25 * (newf[i,j+1] + newf[i,j-1] +
-                                newf[i+1,j] + newf[i-1,j])
-
-    return newf
-
-@profile
+# @profile
 def run_pure_numpy(N, num_iterations):
     np.random.seed(42)
     grid = np.random.rand(N, N)
@@ -25,7 +13,7 @@ def run_pure_numpy(N, num_iterations):
     grid[:,0] = 0
 
     for _ in range(num_iterations):
-        grid = cythonpoisson.numpy_pure_gauss_seidel(grid)
+        grid = purepythonpoisson.numpy_pure_gauss_seidel(grid)
 
 
 def timed(f, *args, **kwargs):
