@@ -58,7 +58,7 @@ def run_function_as_experiment(f, num_iterations = 100):
     for i, j in zip(grid_sizes, wtimes):
         print(f"Grid: ({i}, {i})\n\tavg runtime: {j}s")
 
-    plt.plot(grid_sizes, wtimes, label=f"{f.__name__}", marker='o')
+    plt.plot(grid_sizes, wtimes, label=f"{f.__name__} (m1 (16') macbook pro, 2021)", marker='o')
 
 def save_1024_grid_hdf5():
     pure_python_result = solve_poisson(1024, 50, purepythonpoisson.numpy_pure_gauss_seidel)
@@ -69,10 +69,55 @@ def save_1024_grid_hdf5():
     f["/1024/cython"] = cython_result
 
 
+# This is used to run the profliing experiment for the default python implementation
+# and the optimized cython implementation, and then plot the results of these 2 along with
+# the runtimes obtained for Jacobi based pytorch and cupy optimizations present
+# in the torch_cupy.ipynb notebook.
+# The visual results of the runtimes are present in the plot called "ex1_all4_comparison.png"
+# present under the "images" directory for a3. However, to look at the raw numbers, you can
+# refer to the ipynb notebook for the torch and cupy runtimes, and the below output for
+# the pure-python (default) and cython implementations:
+#
+#
+# --------- RAW OUTPUT FOR pure-python (default) AND cython BEGINS --------------------------
+# $ python3 poisson_solver.py 
+# ran numpy_pure_gauss_seidel
+# each grid ran 100 iterations. (5 runs)
+# Grid: (64, 64)
+# 	avg runtime: 0.17771347500383855s
+# Grid: (128, 128)
+# 	avg runtime: 0.6884284336585551s
+# Grid: (256, 256)
+# 	avg runtime: 2.798375883419067s
+# Grid: (512, 512)
+# 	avg runtime: 12.197537625208497s
+# Grid: (1024, 1024)
+# 	avg runtime: 51.00448666685261s
+# ran numpy_cython_gauss_seidel
+# each grid ran 100 iterations. (5 runs)
+# Grid: (64, 64)
+# 	avg runtime: 0.0025755918119102716s
+# Grid: (128, 128)
+# 	avg runtime: 0.010063541820272803s
+# Grid: (256, 256)
+# 	avg runtime: 0.04073448325507343s
+# Grid: (512, 512)
+# 	avg runtime: 0.1747473582625389s
+# Grid: (1024, 1024)
+# 	avg runtime: 0.7243686002213507s
+# ---------------------- RAW OUTPUT ENDS ----------------------------
 if __name__ == '__main__':
     run_function_as_experiment(purepythonpoisson.numpy_pure_gauss_seidel)
     run_function_as_experiment(cythonpoisson.numpy_cython_gauss_seidel)
 
+    # Hard-coding the runtimes for the pytorch and cupy implementations 
+    # (which used the Jacobi numeric scheme). Their runtimes are visible in the
+    # torch_cupy.ipynb notebook
+    grid_sizes = [2**i for i in range(6, 11)]
+    torch_runtimes = [0.07143062040004225, 0.01780876279999575, 0.018758892999994715, 0.020996075800030666, 0.06866929739996977]
+    cupy_runtimes = [0.05095121419997213, 0.04684149640002033, 0.04514856820001114, 0.051510513400012316, 0.09725730279999426]
+    plt.plot(grid_sizes, torch_runtimes, label=f"pytorch (colab t4 gpu)", marker='o')
+    plt.plot(grid_sizes, cupy_runtimes, label=f"cupy (colab t4 gpu)", marker='o')
 
     plt.yscale("log")
     plt.xscale("log")
