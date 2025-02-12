@@ -136,7 +136,7 @@
 \title{
   \normalsize{DD2358 VT25 Introduction to}\\
   \normalsize{High Performance Computing}\\
-  \large{Assignment 3}\\
+  \large{Assignment 3 - Using Compilation Techniques and GPUs for Optimization}\\
 }
 \author{
   \small Rishi Vijayvargiya\\[-0.75ex]
@@ -171,8 +171,8 @@
 \renewcommand{\epsilon}{\varepsilon}
 
 % Todo: Set Counter to Excercise Sheet Number
-%\setcounter{section}{1}
-%\setcounter{subsection}{1}
+\setcounter{section}{3}
+\setcounter{subsection}{0}
 
 %###############################################################################
 %###############################################################################
@@ -195,12 +195,14 @@
 % content begin
 %
 
-\section{Code Repository}
+\subsection*{Code Repository}
 The code for this assignment can be found in the following github repository: \url{https://github.com/paulmyr/DD2358-HPC25/tree/master/03_compgpu}.
 
-\section{Gauss-Seidel for Poisson Solver}
-\subsection{Task 1.2: Profiling Code using lineprofiler}
-
+\subsection{Gauss-Seidel for Poisson Solver}
+\subsubsection{Develop the Gauss-Seidel solver with NumPy}
+\todo[inline]{Plot the performance varying the grid size}
+\subsubsection{Profiling Code using lineprofiler}
+\begin{lstlisting}[language=bash,basicstyle=\tiny\ttfamily]
 Total time: 62.731 s
 File: .\03_compgpu\exercise1\poisson_solver.py
 Function: numpy_pure_gauss_seidel at line 8
@@ -219,12 +221,20 @@ Line #      Hits         Time  Per Hit   % Time  Line Contents
     17      5000       6168.0      1.2      0.0      return newf
 
 Total time: 99.7621 s
+\end{lstlisting}
 
 
-\section{Bonus: Fast Fractal Fun with Cython \& GPUs}
+\subsubsection{Use the Cython Annotation tool to identify the bottleneck}
+\subsubsection{Use Cython to optimize}
+\subsubsection{Use PyTorch to port your code to Nvidia GPUs}
+\subsubsection{Use CuPy to port your code to Nvidia GPUs}
+\subsubsection{Measure the performance (execution time) with GPU}
+\subsubsection{Save the newgrid matrix as an hdf5 file using h5py }
+
+\subsection{Bonus: Fast Fractal Fun with Cython \& GPUs}
 The original Mandelbrot Set code provided in the assignment description can be found in the \verb|mandelbrot_set_default.py| file in the code-repository (\href{https://github.com/paulmyr/DD2358-HPC25/blob/master/03_compgpu/bonus/mandelbrot_set_default.py}{link}). The code to display the generated Mandelbrot Set has been commented out to allow for \verb|pytests| to be run against the file. All other code files related to the Bonus (mentioned or not mentioned in this report) can be found in the \verb|bonus/| directory of the code-repository.
 
-\subsection*{B.1: Cython Optimization of Baseline}
+\subsubsection{Cython Optimization of Baseline}
 To optimize the code with \verb|Cython|, we first examined the key areas where a large number of calls were being made to the Python virtual machine. For this, we extracted the \verb|mandelbrot| and the \verb|mandelbrot_set| functions from the original file into the file \verb|cython_mandelbrot.pyx| and then ran the \verb|cython -a cython_mandelbrot.pyx| command. 
 
 \verb|og_cython_mandelbrot.html| was the resulting HTML file and is present in the code-repository. Below we include a screenshot of the file
@@ -249,7 +259,7 @@ Finally, we used the generated \verb|cython_mandelbrot| module above in the new 
 
 The result of the reduced calls to the Python VM because of our annotations can be seen in the HTML file above (\verb|cython_mandelbrot_after_annotate.html| is the name of the file in the code-repository), which was generated using the \verb|cython -a| command \textit{after} applying the annotations to the \verb|.pyx| file.
 
-\subsection*{B.2: Vectorization \& GPU Optimization of Baseline}
+\subsubsection{Vectorization \& GPU Optimization of Baseline}
 The vectorized version of the original Mandelbrot Set code can be found in the \verb|mandelbrot_torch.ipynb| notebook (\href{https://github.com/paulmyr/DD2358-HPC25/blob/master/03_compgpu/bonus/mandelbrot_torch.ipynb}{link}). Instead of using 2 functions, we now only use one function -- \verb|mandelbrot_set_torch| -- because of the vectorization. We used \underline{PyTorch} to run the Mandelbrot computation on the GPU. The comments of the function explain our reasoning for the vectorization. We used the \underline{T4 GPU} presented on Google Colab as our GPU for this section.
 
 To get the \verb|x_vals| and \verb|y_vals| array as in the original code, we first used Numpy's \verb|linspace| method and then transformed that to a PyTorch tensor. This was required to ensure that we were able to correctly check the output of the vectorized code with the original output, and PyTorch's \verb|linspace| at times returned tensors with a higher precision than the ones returned by \verb|Numpy|: which at times caused difference in complex-number diversions. More specific information on this can be found in the comments in the notebook. 
@@ -259,7 +269,7 @@ As alluded to earlier, we have a \underline{Correctess Verification} section whi
 Finally, the notebook also compares the running time of the original code compared with the GPU version -- a plot of this along with specific timing info can be found at the end of the notebook. \\
 \textit{Note: A comparison of all 3 implementations follows in the next section.}
 
-\subsection*{B.3: Comparison of the 3 Approaches}
+\subsubsection{Comparison of the 3 Approaches}
 To compare the running times of the 3 approaches, we used the code present in the \verb|mandelbrot_profile.py| file (\href{https://github.com/paulmyr/DD2358-HPC25/blob/master/03_compgpu/bonus/mandelbrot_profile.py}{link}). The running times for the PyTorch version of the original code were obtained on Google Colab T4 GPU and are the same as those present in the notebook mentioned in the section above. The Pure-Python (original) version and the Cython-ized version of the original code were both ran on an \underline{M1 MacBook Pro (16-inch, 2021)}. 
 
 We measured the running times of each implementation on square grids of 4 sizes: $256 \times 246, 512 \times 512, 1024 \times 1024$ and $2048 \times 2048$. The $x$ and $y$ coordinates were the same ones present in the original Mandelbrot Set code. We took the average running time over 10 runs for a grid as the final running time of the Mandelbrot implemention for that grid. The maximum number of iterations was 100. 
