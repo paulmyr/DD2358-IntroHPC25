@@ -8,9 +8,8 @@ import purepythonpoisson
 # @profile
 def run_pure_numpy(N, num_iterations):
     np.random.seed(42)
-    grid = np.random.rand(N, N)
-    grid[0,:] = 0
-    grid[:,0] = 0
+    grid = np.zeros((N, N))
+    grid[1:-1, 1:-1] = np.random.rand(N-2, N-2)
 
     for _ in range(num_iterations):
         grid = purepythonpoisson.numpy_pure_gauss_seidel(grid)
