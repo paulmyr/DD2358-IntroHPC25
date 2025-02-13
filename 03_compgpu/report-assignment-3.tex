@@ -221,9 +221,11 @@ def numpy_pure_gauss_seidel(f):
     return newf
 \end{verbatim}
 
-This implementation serves as a baseline for performance comparisons before further optimizations.
+This implementation serves as a baseline for performance comparisons before further optimizations. We measure the performance of calling this solver in a loop for the required number of iterations on differing grid sizes at the end (section 3.1.9), where we compare all 4 implementations together. 
 
 \subsubsection{Profiling Code using lineprofiler}
+When profiling the code using the \verb|line_profiler|, we can see that, as expected, the slowest part of the function seems to be the work done inside the 2 nested loops by the function responsible for going over the provided square grid and performing the Gauss-Seidel algorithm updates. The runtime of the calling function (the one that calls this for the provided number of iterations) was completely dictated by how long this loop takes, and thus we feel optimizing this function would be the best approach to take.
+ 
 \begin{lstlisting}[language=bash,basicstyle=\tiny\ttfamily]
 Total time: 62.731 s
 File: .\03_compgpu\exercise1\poisson_solver.py
@@ -253,7 +255,7 @@ The Cython annotation tool provides a visual representation of Python code perfo
     \item{Array indexing in NumPy is relatively slow because it involves Python-level operations.}
 \end{itemize}
 
-The annotation output indicates that most of the computational cost occurs within the double for-loop, making it a prime candidate for optimization with Cython.
+The annotation output indicates that most of the computational cost occurs within the double for-loop, making it a prime candidate for optimization with Cython. You can look at the annotated file \verb|og_cythonfn.html| to look at the output. 
 
 \subsubsection{Use Cython to optimize}
 
@@ -280,7 +282,9 @@ Key improvements include:
     \item The elimination of Python function calls within the loop, leading to significant performance gains.
 \end{itemize}
 
-Performance benchmarks demonstrate that the Cython-optimized implementation achieves substantial speedup compared to the pure NumPy version, making it a more efficient solution for large grid sizes.
+Performance benchmarks demonstrate that the Cython-optimized implementation achieves substantial speedup compared to the pure NumPy version, making it a more efficient solution for large grid sizes. You can look at the annotated file \verb|cythonfn.html| to look at the result of using Cython to optimize the code.
+
+We compare the runtime of this version compared to the original version at the end (section 3.1.9) -- where we have a graph comparing all 4 implementations together. 
 
 \subsubsection{Use PyTorch to port your code to Nvidia GPUs}
 We implement the task in the file \verb|torch_cupy.ipynb|. The code is ported to torch equivalent to the previous diffusion task
@@ -317,7 +321,26 @@ The results of our performance measurements can be seen below.
 
 \subsubsection{Save the newgrid matrix as an hdf5 file using h5py }
 We interpreted the task as saving the torch and cupy implementation results. We saved the torch and cupy calculations over a grid with size \verb|N = 1024|
-as dict entries in a \verb|hdf5| file in the repository (see \verb|matrix_gpu.hdf5|).
+as dict entries in a \verb|hdf5| file in the repository (see \verb|matrix_gpu.hdf5|). Additionally, we have also saved the implementation results with a grid size of \verb|N=1024| using the provided default python implementation from 3.1.1 and its optimized Cython implementation from 3.1.4 in a separate \verb|hdf5| file called \verb|matrix_python_cython.hdf5| in the repository. The code for generating both these \verb|hdf5| files can be found in the provided \verb|.ipynb| notebook and in the python file \verb|poisson_solver.py|, respectively.
+
+\subsubsection{Comparing the 4 Implementations}
+The plot below shows the running-time comparisons for the 4 implementations: the \textbf{default pure-python}, \textbf{cython optimization}, the \textbf{Pytorch implementation}, and the \textbf{CuPy implementation} for varying grid sizes and a fixed number of iterations (100). 
+
+The latter 2 (PyTorch and CuPy) used the \underline{Jacobi} numerical scheme to aid in vectorization, as suggested in the handout. Additionally, PyTorch and CuPy readings were made on Google Colab's T4 GPU, while the other 2 (default pure-python and cython optimized) were made on an M1 MacBook Pro 2021 16 inch model. 
+
+The \verb|.ipynb| notebook contains the exact running times plotted for PyTorch and CuPy, and the \verb|poisson_solver.py| file's comment over the \verb|main| function contain the running times plotted for the other 2 implementations. The code to generate this plot is available in the \verb|poisson_solver.py| file in the \verb|main| function.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.8\textwidth]{images/ex1_all4_comparison.png}
+  \caption{Comparisons For the 4 Implementations on Different Grid Sizes (Log-Scale)}
+\end{figure}
+
+From the figure, it is clear to see that \underline{all optimizations} perform better than the default pure-python implementation. Among the optimizations, it appears that the Cython optimization seems to be performing the best for smaller grid sizes. However, as grid sizes increase, the PyTorch and CuPy implementations, powered by \underline{vectorization and GPU}, seem to emerge as leaders. 
+
+Among these 2 implementations, it seems that the \underline{PyTorch} implementations has a slight edge over the CuPy implementation. We hypothesize that this might be because of the \verb|synchronization| calls at the end of the CuPy implementations in the \verb|.ipynb| notebook -- which help ensure that our code finishes executing on the GPU before going to the next line. Regardless, the difference does not seem as big between the 2 vectorized+GPU implementations for the largest grid-size tested. 
+
+What surprised us the most was perhaps the performance of the Cython optimizatation -- which gives speedups of up to 71x over the default pure-python implementation for the largest grid size. This showed us that ways of optimizing python programs might not need to be as convoluted when one is short on resources -- as simple type annotations also seem to go a far way! 
 
 \subsection{Bonus: Fast Fractal Fun with Cython \& GPUs}
 The original Mandelbrot Set code provided in the assignment description can be found in the \verb|mandelbrot_set_default.py| file in the code-repository (\href{https://github.com/paulmyr/DD2358-HPC25/blob/master/03_compgpu/bonus/mandelbrot_set_default.py}{link}). The code to display the generated Mandelbrot Set has been commented out to allow for \verb|pytests| to be run against the file. All other code files related to the Bonus (mentioned or not mentioned in this report) can be found in the \verb|bonus/| directory of the code-repository.
