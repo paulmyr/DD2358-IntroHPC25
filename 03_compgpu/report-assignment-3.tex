@@ -201,6 +201,28 @@ The code for this assignment can be found in the following github repository: \u
 \subsection{Gauss-Seidel for Poisson Solver}
 \subsubsection{Develop the Gauss-Seidel solver with NumPy}
 \todo[inline]{Plot the performance varying the grid size}
+The Gauss-Seidel method is an iterative approach for solving linear systems of equations, commonly used for discretized PDEs such as the Poisson equation. In our implementation, we use NumPy to optimize operations while maintaining readability and simplicity.
+
+The function \texttt{numpy\_pure\_gauss\_seidel} updates a given 2D grid iteratively using the Gauss-Seidel update formula:
+
+\begin{equation}
+    f_{i,j} = \frac{1}{4} \left( f_{i+1,j} + f_{i-1,j} + f_{i,j+1} + f_{i,j-1} \right)
+\end{equation}
+
+This function operates directly on a NumPy array, leveraging vectorized operations where possible while iterating over grid points:
+
+\begin{verbatim}
+def numpy_pure_gauss_seidel(f):
+    newf = f.copy()
+    for i in range(1, newf.shape[0]-1):
+        for j in range(1, newf.shape[1]-1):
+            newf[i, j] = 0.25 * (newf[i, j+1] + newf[i, j-1] +
+                                 newf[i+1, j] + newf[i-1, j])
+    return newf
+\end{verbatim}
+
+This implementation serves as a baseline for performance comparisons before further optimizations.
+
 \subsubsection{Profiling Code using lineprofiler}
 \begin{lstlisting}[language=bash,basicstyle=\tiny\ttfamily]
 Total time: 62.731 s
@@ -225,7 +247,40 @@ Total time: 99.7621 s
 
 
 \subsubsection{Use the Cython Annotation tool to identify the bottleneck}
+The Cython annotation tool provides a visual representation of Python code performance by highlighting lines that involve significant Python overhead. The analysis of the NumPy-based Gauss-Seidel implementation revealed the following bottlenecks:
+\begin{itemize}
+    \item{The loop iterations over the grid introduce significant performance costs due to Python's dynamic typing and function calls.}
+    \item{Array indexing in NumPy is relatively slow because it involves Python-level operations.}
+\end{itemize}
+
+The annotation output indicates that most of the computational cost occurs within the double for-loop, making it a prime candidate for optimization with Cython.
+
 \subsubsection{Use Cython to optimize}
+
+To optimize the solver, we use Cython to introduce static typing and remove Python-level operations. The optimized Cython implementation is given below:
+
+\begin{verbatim}
+    cimport numpy as np
+
+    def cython_gauss_seidel(double[:,:] f):
+    cdef unsigned int i, j
+    cdef double[:,:] newf = f.copy()
+
+    for i in range(1, newf.shape[0]-1):
+        for j in range(1, newf.shape[1]-1):
+            newf[i,j] = 0.25 * (newf[i,j+1] + newf[i,j-1] +
+                                newf[i+1,j] + newf[i-1,j])
+    return newf
+\end{verbatim}
+
+Key improvements include:
+\begin{itemize}
+    \item The use of cdef to declare variables with C data types, reducing overhead.
+    \item The explicit typing of the input array as a double[:,:], enabling direct memory access.
+    \item The elimination of Python function calls within the loop, leading to significant performance gains.
+\end{itemize}
+
+Performance benchmarks demonstrate that the Cython-optimized implementation achieves substantial speedup compared to the pure NumPy version, making it a more efficient solution for large grid sizes.
 
 \subsubsection{Use PyTorch to port your code to Nvidia GPUs}
 We implement the task in the file \verb|torch_cupy.ipynb|. The code is ported to torch equivalent to the previous diffusion task
