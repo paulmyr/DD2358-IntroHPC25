@@ -288,6 +288,8 @@ We have also implemented some \textit{sanity check} unit tests to ensure that th
 
 We compare the runtime of this version compared to the original version at the end (section 3.1.9) -- where we have a graph comparing all 4 implementations together. 
 
+\textit{Note: The .so and .c files generated after running the Cython compilation command are not in the repo. Since they depend on the platform on which the command is being run, we thought it best not to include it here.}
+
 \subsubsection{Use PyTorch to port your code to Nvidia GPUs}
 We implement the task in the file \verb|torch_cupy.ipynb|. The code is ported to torch equivalent to the previous diffusion task
 where the loops were replaced by \verb|np.roll| operations. We adapted the code as specified in the task description by calculating the
