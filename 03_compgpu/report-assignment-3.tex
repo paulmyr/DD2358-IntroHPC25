@@ -284,6 +284,8 @@ Key improvements include:
 
 Performance benchmarks demonstrate that the Cython-optimized implementation achieves substantial speedup compared to the pure NumPy version, making it a more efficient solution for large grid sizes. You can look at the annotated file \verb|cythonfn.html| to look at the result of using Cython to optimize the code.
 
+We have also implemented some \textit{sanity check} unit tests to ensure that the optimized implementation does not return answers that are different from the default implementation on the same grid for the same number of iterations. These can be found in the file \verb|test_cython_purepython.py|.
+
 We compare the runtime of this version compared to the original version at the end (section 3.1.9) -- where we have a graph comparing all 4 implementations together. 
 
 \subsubsection{Use PyTorch to port your code to Nvidia GPUs}
