@@ -226,10 +226,43 @@ Total time: 99.7621 s
 
 \subsubsection{Use the Cython Annotation tool to identify the bottleneck}
 \subsubsection{Use Cython to optimize}
+
 \subsubsection{Use PyTorch to port your code to Nvidia GPUs}
+We implement the task in the file \verb|torch_cupy.ipynb|. The code is ported to torch equivalent to the previous diffusion task
+where the loops were replaced by \verb|np.roll| operations. We adapted the code as specified in the task description by calculating the
+updated field value using the array of the previous iteration, which result in a slower convergence, but enables us to parallelize the field calculations
+instead of sequential calculations in case of in field operations.
+
+To port the resulting code to torch, we use the equivalent torch function \verb|torch.roll| and reset the edge values to zero after each iteration. We use the same utility functions as for the numpy code.
+Necessary adaptions were made to the input grid, as the datatype needs to be a \verb|torch.tensor| and the object will be assigned to the GPU using the \verb|.cuda()| method.
+
 \subsubsection{Use CuPy to port your code to Nvidia GPUs}
+We did the same initial steps as for the torch implementation:
+We implement the task in the file \verb|torch_cupy.ipynb|. The code is ported to torch equivalent to the previous diffusion task
+where the loops were replaced by \verb|np.roll| operations. We adapted the code as specified in the task description by calculating the
+updated field value using the array of the previous iteration, which result in a slower convergence, but enables us to parallelize the field calculations
+instead of sequential calculations in case of in field operations.
+
+To port the resulting code to cupy, we use the equivalent torch function \verb|cupy.roll| and reset the edge values to zero after each iteration. We use the same utility functions as for the numpy code.
+Necessary adaptions were made to the input grid, as the datatype needs to be a \verb|cupy.array| and the call \verb|cupy.cuda.Stream.null.synchronize()| ensures a GPU execution which is finished before returning the function result.
+
 \subsubsection{Measure the performance (execution time) with GPU}
+Before testing the performance, we added test cases to ensure correct execution of the implementations.
+The test cases proved a valid implementation and can be found in the notebook as well.
+
+The results of our performance measurements can be seen below.
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.8\textwidth]{images/cupy_torch_gpu.png}
+  \caption{Running Time Comparisons For Different Grid Sizes (Log-Scale)}
+\end{figure}
+
+ Interestingly the running time of the torch implementation seems to be more efficient for large Arrays, while it is
+ inferior to the cupy implementation for small Array sizes.
+
 \subsubsection{Save the newgrid matrix as an hdf5 file using h5py }
+We interpreted the task as saving the torch and cupy implementation results. We saved the torch and cupy calculations over a grid with size \verb|N = 1024|
+as dict entries in a \verb|hdf5| file in the repository (see \verb|matrix_gpu.hdf5|).
 
 \subsection{Bonus: Fast Fractal Fun with Cython \& GPUs}
 The original Mandelbrot Set code provided in the assignment description can be found in the \verb|mandelbrot_set_default.py| file in the code-repository (\href{https://github.com/paulmyr/DD2358-HPC25/blob/master/03_compgpu/bonus/mandelbrot_set_default.py}{link}). The code to display the generated Mandelbrot Set has been commented out to allow for \verb|pytests| to be run against the file. All other code files related to the Bonus (mentioned or not mentioned in this report) can be found in the \verb|bonus/| directory of the code-repository.
