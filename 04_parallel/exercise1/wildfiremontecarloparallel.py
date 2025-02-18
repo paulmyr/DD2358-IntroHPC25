@@ -75,7 +75,6 @@ def simulate_wildfire(seed):
         if np.sum(forest == BURNING) == 0:  # Stop if no more fire
             if day < DAYS - 1:
                 fire_spread += [0 for _ in range(DAYS - 1 - day)]
-            print(fire_spread)
             break
         #
         # # Plot grid every 5 days

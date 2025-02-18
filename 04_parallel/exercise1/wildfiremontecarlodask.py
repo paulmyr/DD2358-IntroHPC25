@@ -13,7 +13,9 @@ import pdb
 GRID_SIZE = 800  # 800x800 forest grid
 FIRE_SPREAD_PROB = 0.3  # Probability that fire spreads to a neighboring tree
 BURN_TIME = 3  # Time before a tree turns into ash
-DAYS = 10  # Maximum simulation time
+DAYS = 60  # Maximum simulation time
+NUM_SIMULATIONS = 10 # The number of simulations to run in parallel
+CHUNK_SIZE = NUM_SIMULATIONS
 
 # State definitions
 EMPTY = 0  # No tree
@@ -46,9 +48,11 @@ def get_neighbors(x, y):
             neighbors.append((nx, ny))
     return neighbors
 
+
 @delayed
 def simulate_wildfire(seed):
     """Simulates wildfire spread over time."""
+    # TODO: Randomness does not really make much sense here? See print outputs for why
     forest, burn_time = initialize_forest(seed)
     random.seed(seed)
 
@@ -78,7 +82,6 @@ def simulate_wildfire(seed):
         if np.sum(forest == BURNING) == 0:  # Stop if no more fire
             if day < DAYS - 1:
                 fire_spread += [0 for _ in range(DAYS - 1 - day)]
-            # print(fire_spread)
             break
         #
         # # Plot grid every 5 days
@@ -89,91 +92,26 @@ def simulate_wildfire(seed):
         #     plt.colorbar(label="State: 0=Empty, 1=Tree, 2=Burning, 3=Ash")
         #     plt.show()
 
+    print(f"----------------------------------------------- \n [random] The grid being returned for seed {seed} is: \n {np.array(fire_spread)} \n -----------------------------------------------")
     return fire_spread
 
-
-def normal_simulate_wildfire(seed):
-    """Simulates wildfire spread over time."""
-    forest, burn_time = initialize_forest(seed)
-    random.seed(seed)
-
-    fire_spread = []  # Track number of burning trees each day
-
-    for day in range(DAYS):
-        new_forest = forest.copy()
-
-        for x in range(GRID_SIZE):
-            for y in range(GRID_SIZE):
-                if forest[x, y] == BURNING:
-                    burn_time[x, y] += 1  # Increase burn time
-
-                    # If burn time exceeds threshold, turn to ash
-                    if burn_time[x, y] >= BURN_TIME:
-                        new_forest[x, y] = ASH
-
-                    # Spread fire to neighbors
-                    for nx, ny in get_neighbors(x, y):
-                        if forest[nx, ny] == TREE and random.random() < FIRE_SPREAD_PROB:
-                            new_forest[nx, ny] = BURNING
-                            burn_time[nx, ny] = 1
-
-        forest = new_forest.copy()
-        fire_spread.append(np.sum(forest == BURNING))
-
-        if np.sum(forest == BURNING) == 0:  # Stop if no more fire
-            if day < DAYS - 1:
-                fire_spread += [0 for _ in range(DAYS - 1 - day)]
-            # print(fire_spread)
-            break
-        #
-        # # Plot grid every 5 days
-        # if day % 5 == 0 or day == DAYS - 1:
-        #     plt.figure(figsize=(6, 6))
-        #     plt.imshow(forest, cmap='viridis', origin='upper')
-        #     plt.title(f"Wildfire Spread - Day {day}")
-        #     plt.colorbar(label="State: 0=Empty, 1=Tree, 2=Burning, 3=Ash")
-        #     plt.show()
-
-    return fire_spread
 
 # Run simulation
 if __name__ == "__main__":
-    # first_run = [simulate_wildfire(0), simulate_wildfire(1)]
-    # # second_run = [simulate_wildfire(0), simulate_wildfire(1)]
-
-    # print(first_run)
-    # print(second_run)
-
-    normal_output = np.array([normal_simulate_wildfire(0), normal_simulate_wildfire(1)])
-    print(normal_output)
-
     client = Client()
     print(client)
     print(client.dashboard_link)
-    num_workers = 2
-    seed = [i for i in range(num_workers)]
-    seeds =[(seed[i]) for i in range(num_workers)]
-    print(seeds)
+    seeds =[i for i in range(NUM_SIMULATIONS)]
+
+    # The individual simulations to run in parallel, we get a 2D numpy array afterwards
     tasks = delayed(lambda arr: np.array(arr))([simulate_wildfire(i) for i in seeds])
-    arr = da.from_delayed(tasks, shape=(num_workers, DAYS), dtype=da.float32)
-    print("--------- Printing tasks -----------------")
-    # IMPORTANT: DO NOT CALL COMPUTE UNTIL THE FINAL ANSWER IS NEEDED!
-    # UNCOMMENT THESE PRINT LINES ONE BY ONE TO SEE WHAT HAPPENS IF YOU DO
-    # print(tasks.compute())
-    print("------------ Printing arr -------------------")
-    # print(arr.compute())
-    # arr = arr.rechunk((num_workers, DAYS))
-    # tasks = tasks.rechunk((num_workers, DAYS))
-
-
+    # Getting a single dask array of with counts for all 60 days across all simulations
+    arr = da.from_delayed(tasks, shape=(NUM_SIMULATIONS, DAYS), dtype=da.float32)
+    # Rechunk based on columns -- THIS IS WHERE WE CAN CONTROL THE CHUNK SIZE
+    arr = arr.rechunk((CHUNK_SIZE, DAYS))
+    # Compute the mean of the individual chunks 
     avg = arr.mean(axis=0)
-    # # avg = np.mean(results)
     result = avg.compute()
-    # # result = result.compute()
-    # # da.from_array(avg, chunks="auto")
-    # # print("------------- Printing a")
-    # # print(arr.compute())
-    # print("Done")
     print("--------------- Printing Average --------------------")
     print(result)
 
