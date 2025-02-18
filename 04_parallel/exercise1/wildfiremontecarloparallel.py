@@ -65,6 +65,8 @@ def simulate_wildfire(seed):
 
                     # Spread fire to neighbors
                     for nx, ny in get_neighbors(x, y):
+                        # (Re)-Setting the seed inside the loop helps with reproducability for Dask
+                        random.seed(seed)
                         if forest[nx, ny] == TREE and random.random() < FIRE_SPREAD_PROB:
                             new_forest[nx, ny] = BURNING
                             burn_time[nx, ny] = 1
@@ -90,7 +92,7 @@ def simulate_wildfire(seed):
 
 # Run simulation
 if __name__ == "__main__":
-    num_workers = 8#
+    num_workers = 5#
     seed = [i for i in range(num_workers)]
     with Pool(num_workers) as pool:
         fire_spread_over_time = pool.map(simulate_wildfire, seed)

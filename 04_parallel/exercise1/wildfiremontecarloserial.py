@@ -15,8 +15,10 @@ BURNING = 2  # Burning tree
 ASH = 3  # Burned tree
 
 
-def initialize_forest():
+def initialize_forest(seed):
     """Creates a forest grid with all trees and ignites one random tree."""
+    np.random.seed(seed)
+    random.seed(seed)
     forest = np.ones((GRID_SIZE, GRID_SIZE), dtype=int)  # All trees
     burn_time = np.zeros((GRID_SIZE, GRID_SIZE), dtype=int)  # Tracks how long a tree burns
 
@@ -38,9 +40,9 @@ def get_neighbors(x, y):
     return neighbors
 
 
-def simulate_wildfire():
+def simulate_wildfire(seed):
     """Simulates wildfire spread over time."""
-    forest, burn_time = initialize_forest()
+    forest, burn_time = initialize_forest(seed)
 
     fire_spread = []  # Track number of burning trees each day
 
@@ -58,6 +60,8 @@ def simulate_wildfire():
 
                     # Spread fire to neighbors
                     for nx, ny in get_neighbors(x, y):
+                        # (Re)-Setting the seed inside the loop helps with reproducability for Dask
+                        random.seed(seed)
                         if forest[nx, ny] == TREE and random.random() < FIRE_SPREAD_PROB:
                             new_forest[nx, ny] = BURNING
                             burn_time[nx, ny] = 1
@@ -66,6 +70,8 @@ def simulate_wildfire():
         fire_spread.append(np.sum(forest == BURNING))
 
         if np.sum(forest == BURNING) == 0:  # Stop if no more fire
+            if day < DAYS - 1:
+                fire_spread += [0 for _ in range(DAYS - 1 - day)]
             break
 
         # Plot grid every 5 days
@@ -76,11 +82,12 @@ def simulate_wildfire():
             plt.colorbar(label="State: 0=Empty, 1=Tree, 2=Burning, 3=Ash")
             plt.show()
 
+    print(np.array(fire_spread))
     return fire_spread
 
 
 # Run simulation
-fire_spread_over_time = simulate_wildfire()
+fire_spread_over_time = simulate_wildfire(1)
 
 # Plot results
 plt.figure(figsize=(8, 5))

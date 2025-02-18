@@ -14,7 +14,7 @@ GRID_SIZE = 800  # 800x800 forest grid
 FIRE_SPREAD_PROB = 0.3  # Probability that fire spreads to a neighboring tree
 BURN_TIME = 3  # Time before a tree turns into ash
 DAYS = 60  # Maximum simulation time
-NUM_SIMULATIONS = 10 # The number of simulations to run in parallel
+NUM_SIMULATIONS = 5 # The number of simulations to run in parallel
 CHUNK_SIZE = NUM_SIMULATIONS
 
 # State definitions
@@ -53,6 +53,7 @@ def get_neighbors(x, y):
 def simulate_wildfire(seed):
     """Simulates wildfire spread over time."""
     # TODO: Randomness does not really make much sense here? See print outputs for why
+
     forest, burn_time = initialize_forest(seed)
     random.seed(seed)
 
@@ -60,7 +61,6 @@ def simulate_wildfire(seed):
 
     for day in range(DAYS):
         new_forest = forest.copy()
-
         for x in range(GRID_SIZE):
             for y in range(GRID_SIZE):
                 if forest[x, y] == BURNING:
@@ -72,6 +72,8 @@ def simulate_wildfire(seed):
 
                     # Spread fire to neighbors
                     for nx, ny in get_neighbors(x, y):
+                        # (Re)-Setting the seed inside the loop helps with reproducability for Dask
+                        random.seed(seed)
                         if forest[nx, ny] == TREE and random.random() < FIRE_SPREAD_PROB:
                             new_forest[nx, ny] = BURNING
                             burn_time[nx, ny] = 1
