@@ -19,8 +19,10 @@ BURNING = 2  # Burning tree
 ASH = 3  # Burned tree
 
 
-def initialize_forest():
+def initialize_forest(seed):
     """Creates a forest grid with all trees and ignites one random tree."""
+    random.seed(seed)
+    np.random.seed(seed)
     forest = np.ones((GRID_SIZE, GRID_SIZE), dtype=int)  # All trees
     burn_time = np.zeros((GRID_SIZE, GRID_SIZE), dtype=int)  # Tracks how long a tree burns
 
@@ -44,7 +46,7 @@ def get_neighbors(x, y):
 
 def simulate_wildfire(seed):
     """Simulates wildfire spread over time."""
-    forest, burn_time = initialize_forest()
+    forest, burn_time = initialize_forest(seed)
     random.seed(seed)
 
     fire_spread = []  # Track number of burning trees each day
