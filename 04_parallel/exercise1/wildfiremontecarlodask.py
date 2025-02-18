@@ -73,7 +73,7 @@ def simulate_wildfire(seed):
                     # Spread fire to neighbors
                     for nx, ny in get_neighbors(x, y):
                         # (Re)-Setting the seed inside the loop helps with reproducability for Dask
-                        random.seed(seed)
+                        # random.seed(seed)
                         if forest[nx, ny] == TREE and random.random() < FIRE_SPREAD_PROB:
                             new_forest[nx, ny] = BURNING
                             burn_time[nx, ny] = 1
@@ -101,6 +101,8 @@ def simulate_wildfire(seed):
 # Run simulation
 if __name__ == "__main__":
     client = Client()
+    # TODO: Add some kind of "halting" method here, so that user can go to the dashbboard, press enter key, and then
+    # go on to the next screen so that they can monitor stuff nicely
     print(client)
     print(client.dashboard_link)
     seeds =[i for i in range(NUM_SIMULATIONS)]
@@ -113,7 +115,8 @@ if __name__ == "__main__":
     arr = arr.rechunk((CHUNK_SIZE, DAYS))
     # Compute the mean of the individual chunks 
     avg = arr.mean(axis=0)
-    result = avg.compute()
+    # TODO: How do we vary the workers? 
+    result = avg.compute(num_workers=6)
     print("--------------- Printing Average --------------------")
     print(result)
 
