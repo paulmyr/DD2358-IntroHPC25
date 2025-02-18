@@ -87,7 +87,7 @@ def simulate_wildfire(seed):
         #     plt.colorbar(label="State: 0=Empty, 1=Tree, 2=Burning, 3=Ash")
         #     plt.show()
 
-    return np.array(fire_spread)
+    return fire_spread
 
 
 # Run simulation
@@ -95,34 +95,30 @@ if __name__ == "__main__":
     client = Client()
     print(client)
     print(client.dashboard_link)
-    num_workers = 20
+    num_workers = 2
     seed = [i for i in range(num_workers)]
     seeds =[(seed[i]) for i in range(num_workers)]
-    tasks = da.from_delayed([simulate_wildfire(i) for i in seeds], shape=)
-    avg = da.average(tasks, axis=0)
-    # avg = np.mean(results)</
-    results = avg.compute()
+    tasks = delayed(lambda arr: np.array(arr))([simulate_wildfire(i) for i in seeds])
+    arr = da.from_delayed(tasks, shape=(num_workers, 60), dtype=da.float32)
+    avg = da.average(arr, axis=0)
+    # avg = np.mean(results)
+    result = avg.compute()
+    # result = result.compute()
     # da.from_array(avg, chunks="auto")
-    print(results)
+    print(arr.compute())
     print("Done")
+    print(result)
 
-    """
-    fire_spread_over_time_mean = delayed(np.mean)(fires)
-
-    n, m = result.shape
-    print(n, m)
-    fire_spread_over_time_mean = result.mean(axis=0)
-    fire_spread_over_time = fire_spread_over_time.compute()
-    print(fire_spread_over_time_mean)
+    n = result.shape[0]
+    print(n)
     # Plot results
     plt.figure(figsize=(8, 5))
-    for i in range(n):
-        plt.plot(np.arange(0, m), result[i], label=f"Simulation no: {i}")
-    plt.plot(np.arange(0,m), fire_spread_over_time_mean, label="Avg Fire Spread over Time")
+    # for i in range(n):
+    #     plt.plot(np.arange(0, m), result[i], label=f"Simulation no: {i}")
+    plt.plot(np.arange(0,n), result, label="Avg Fire Spread over Time")
     plt.xlabel("Days")
     plt.ylabel("Number of Burning Trees")
     plt.title("Wildfire Spread Over Time")
     plt.legend()
     plt.show()
-    dask.visualize(*result)
-    """
+    # dask.visualize(*result)
