@@ -1,8 +1,13 @@
+from dask import delayed
+import dask
+from dask.distributed import Client
+import dask.array as da
+
 import numpy as np
 import matplotlib.pyplot as plt
 import random
-from dask import delayed
-import dask
+
+import pdb
 
 # Constants
 GRID_SIZE = 800  # 800x800 forest grid
@@ -40,9 +45,10 @@ def get_neighbors(x, y):
     return neighbors
 
 @delayed
-def simulate_wildfire():
+def simulate_wildfire(seed):
     """Simulates wildfire spread over time."""
     forest, burn_time = initialize_forest()
+    random.seed(seed)
 
     fire_spread = []  # Track number of burning trees each day
 
@@ -68,27 +74,55 @@ def simulate_wildfire():
         fire_spread.append(np.sum(forest == BURNING))
 
         if np.sum(forest == BURNING) == 0:  # Stop if no more fire
+            if day < DAYS - 1:
+                fire_spread += [0 for _ in range(DAYS - 1 - day)]
+            # print(fire_spread)
             break
+        #
+        # # Plot grid every 5 days
+        # if day % 5 == 0 or day == DAYS - 1:
+        #     plt.figure(figsize=(6, 6))
+        #     plt.imshow(forest, cmap='viridis', origin='upper')
+        #     plt.title(f"Wildfire Spread - Day {day}")
+        #     plt.colorbar(label="State: 0=Empty, 1=Tree, 2=Burning, 3=Ash")
+        #     plt.show()
 
-        # Plot grid every 5 days
-        if day % 5 == 0 or day == DAYS - 1:
-            plt.figure(figsize=(6, 6))
-            plt.imshow(forest, cmap='viridis', origin='upper')
-            plt.title(f"Wildfire Spread - Day {day}")
-            plt.colorbar(label="State: 0=Empty, 1=Tree, 2=Burning, 3=Ash")
-            plt.show()
-
-    return fire_spread
+    return np.array(fire_spread)
 
 
 # Run simulation
-fire_spread_over_time = [simulate_wildfire() for _ in range(DAYS)]
+if __name__ == "__main__":
+    client = Client()
+    print(client)
+    print(client.dashboard_link)
+    num_workers = 20
+    seed = [i for i in range(num_workers)]
+    seeds =[(seed[i]) for i in range(num_workers)]
+    tasks = da.from_delayed([simulate_wildfire(i) for i in seeds], shape=)
+    avg = da.average(tasks, axis=0)
+    # avg = np.mean(results)</
+    results = avg.compute()
+    # da.from_array(avg, chunks="auto")
+    print(results)
+    print("Done")
 
-# Plot results
-plt.figure(figsize=(8, 5))
-plt.plot(range(len(fire_spread_over_time)), fire_spread_over_time, label="Burning Trees")
-plt.xlabel("Days")
-plt.ylabel("Number of Burning Trees")
-plt.title("Wildfire Spread Over Time")
-plt.legend()
-plt.show()
+    """
+    fire_spread_over_time_mean = delayed(np.mean)(fires)
+
+    n, m = result.shape
+    print(n, m)
+    fire_spread_over_time_mean = result.mean(axis=0)
+    fire_spread_over_time = fire_spread_over_time.compute()
+    print(fire_spread_over_time_mean)
+    # Plot results
+    plt.figure(figsize=(8, 5))
+    for i in range(n):
+        plt.plot(np.arange(0, m), result[i], label=f"Simulation no: {i}")
+    plt.plot(np.arange(0,m), fire_spread_over_time_mean, label="Avg Fire Spread over Time")
+    plt.xlabel("Days")
+    plt.ylabel("Number of Burning Trees")
+    plt.title("Wildfire Spread Over Time")
+    plt.legend()
+    plt.show()
+    dask.visualize(*result)
+    """
