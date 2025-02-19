@@ -3,12 +3,19 @@
 *.aux        
 *.pdf        
 *.bcf        
+*.bbl
+*.blg
 *.run.xml    
 *.toc
 *.log        
 *.synctex.gz
 *.out        
 *.tdo
+
+*.dat
+*.out
+*out
+*.log
 
 *.auctex-auto/
 **/__pycache__/

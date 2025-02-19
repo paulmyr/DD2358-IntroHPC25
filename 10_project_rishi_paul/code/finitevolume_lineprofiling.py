@@ -304,3 +304,14 @@ def main():
 
 if __name__== "__main__":
     main()
+
+    plt.plot(grid_sizes, torch_runtimes, label=f"pytorch (colab t4 gpu)", marker='o')
+    plt.plot(grid_sizes, cupy_runtimes, label=f"cupy (colab t4 gpu)", marker='o')
+
+    plt.yscale("log")
+    plt.xscale("log")
+    plt.xlabel("N")
+    plt.ylabel("wtime")
+    plt.legend()
+
+    plt.show()
