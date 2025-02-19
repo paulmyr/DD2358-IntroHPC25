@@ -238,7 +238,8 @@ def main():
 		# get time step (CFL) = dx / max signal speed
 		dt = courant_fac * np.min( dx / (np.sqrt( gamma*P/rho ) + np.sqrt(vx**2+vy**2)) )
 		plotThisTurn = False
-		if t + dt > outputCount*tOut:
+
+		if t + dt > outputCount*tOut and plotRealTime:
 			dt = outputCount*tOut - t
 			plotThisTurn = True
 
