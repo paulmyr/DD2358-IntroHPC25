@@ -27,8 +27,6 @@ def run_simulation_dask(deterministic=False, profile_time=False, num_iters=TIME_
 
     chunk_size:    The size of chunk to use for the dask arrays. Defaults to tO CHUNK_SIZE in this file
 
-    num_workers:   The number of workers to be used by the dask.distributed Client. Defaults to NUM_WORKERS at the top of this file.
-
     Returns the velocity vector (x and y directions, separately), and the temperature. If the profile_time is True, then the
     time is returned (in seconds) as the 4th value. Otherwise, the 4th value is 0.     
     """
@@ -72,9 +70,6 @@ def run_simulation_dask(deterministic=False, profile_time=False, num_iters=TIME_
         t1 = timer()
 
     for t in range(num_iters):
-        # TODO: This seems to work (see ocean_test.py), BUT, this only uses "map_overlap". 
-        #       The handout also suggests that map_block would/could be used. Am I doing something wrong here? 
-
         # We use the `map_overlap` with a ghost cell depth of 1 so that the rolls performed by the laplican calculation can
         # be done appropriately. Note that we use the "periodic" boundary, as that seems to give the correct output as with this settings,
         # the edges "wrap around", as seems to be the computation performed by the given code in the "ocean_default.py" file.
@@ -99,17 +94,17 @@ def run_simulation_dask(deterministic=False, profile_time=False, num_iters=TIME_
 # $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 # USES dask.distributed WITH THE SPECIFIED NUMBER OF WORKERS $
 # $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-# if __name__ == "__main__":
-#     client = Client(n_workers=6)
-#     print("Dask Dashboard running at:", client.dashboard_link)
-#     input("Press a key once you have gone to the dashboard...")
-#     u_result, v_result, temperature_result = run_simulation_dask(deterministic=True)
+if __name__ == "__main__":
+    client = Client(n_workers=6)
+    print("Dask Dashboard running at:", client.dashboard_link)
+    input("Press a key once you have gone to the dashboard...")
+    u_result, v_result, temperature_result = run_simulation_dask(deterministic=True)
 
 
 
 
 # $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-# UNCOMMENT THE SECTION BELOW TO RUN THE SIMULATION, SAVE TO VTK FILES, AND GET A PLOT AT THE END.$
+# UNCOMMENT THE SECTION BELOW TO RUN THE SIMULATION AND GET A PLOT AT THE END.$
 # $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 # u_result, v_result, temperature_result, _ = run_simulation_dask(deterministic=True)
 # # Plot the velocity field
