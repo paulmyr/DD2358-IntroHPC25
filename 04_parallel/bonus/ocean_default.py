@@ -5,7 +5,7 @@ from timeit import default_timer as timer
 
 # Grid size 
 grid_size = 200
-TIME_STEPS = 1000
+TIME_STEPS = 100
 
 def save_to_vtk(filename, u_velocity, v_velocity, temperature):
     """
@@ -112,7 +112,7 @@ def run_simulation_default(deterministic=False, profile_time=False, num_iters=TI
 # $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 # UNCOMMENT THE SECTION BELOW TO RUN THE SIMULATION, SAVE TO VTK FILES, AND GET A PLOT AT THE END.$
 # $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-u_velocity, v_velocity, temperature, _ = run_simulation_default(deterministic=True)
+# u_velocity, v_velocity, temperature, _ = run_simulation_default(deterministic=True)
 
 # # Plot the velocity field
 # plt.figure(figsize=(6, 5))
