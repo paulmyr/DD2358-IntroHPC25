@@ -92,7 +92,7 @@ def run_simulation_dask(deterministic=False, profile_time=False, num_iters=TIME_
 
 
 # $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-# USES dask.distributed WITH THE SPECIFIED NUMBER OF WORKERS $
+# USES dask.distributed WITH THE DEFAULT NUMBER OF WORKERS   $ 
 # $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 if __name__ == "__main__":
     client = Client()
