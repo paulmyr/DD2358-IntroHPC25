@@ -19,16 +19,14 @@ BURNING = 2  # Burning tree
 ASH = 3  # Burned tree
 
 
-def initialize_forest(seed=None):
+def initialize_forest(custom_rand):
     """Creates a forest grid with all trees and ignites one random tree."""
-    np.random.seed(seed)
-    random.seed(seed)
 
     forest = np.ones((GRID_SIZE, GRID_SIZE), dtype=int)  # All trees
     burn_time = np.zeros((GRID_SIZE, GRID_SIZE), dtype=int)  # Tracks how long a tree burns
 
     # Ignite a random tree
-    x, y = random.randint(0, GRID_SIZE - 1), random.randint(0, GRID_SIZE - 1)
+    x, y = custom_rand.randint(0, GRID_SIZE - 1), custom_rand.randint(0, GRID_SIZE - 1)
     forest[x, y] = BURNING
     burn_time[x, y] = 1  # Fire starts burning
 
@@ -44,10 +42,10 @@ def get_neighbors(x, y):
             neighbors.append((nx, ny))
     return neighbors
 
-
 def simulate_wildfire(seed=None, continuous_plot=False):
     """Simulates wildfire spread over time."""
-    forest, burn_time = initialize_forest(seed)
+    custom_rand = random.Random(seed)
+    forest, burn_time = initialize_forest(custom_rand)
 
     fire_spread = []  # Track number of burning trees each day
 
@@ -65,11 +63,7 @@ def simulate_wildfire(seed=None, continuous_plot=False):
 
                     # Spread fire to neighbors
                     for nx, ny in get_neighbors(x, y):
-                        # (Re)-Setting the seed inside the loop helps with reproducability for Dask
-                        # This is being set here to be able to verify correctness. In actual simulation
-                        # we can prevent any seed from being set to get true randomness.
-                        random.seed(seed)
-                        if forest[nx, ny] == TREE and random.random() < FIRE_SPREAD_PROB:
+                        if forest[nx, ny] == TREE and custom_rand.random() < FIRE_SPREAD_PROB:
                             new_forest[nx, ny] = BURNING
                             burn_time[nx, ny] = 1
 

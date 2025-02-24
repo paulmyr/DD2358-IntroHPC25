@@ -70,10 +70,6 @@ def simulate_wildfire(seed=None, continuous_plot=False):
 
                     # Spread fire to neighbors
                     for nx, ny in get_neighbors(x, y):
-                        # (Re)-Setting the seed inside the loop helps with reproducability for Dask
-                        # This is being set here to be able to verify correctness. In actual simulation
-                        # we can prevent any seed from being set to get true randomness.
-                        # random.seed(seed)
                         if forest[nx, ny] == TREE and custom_rand.random() < FIRE_SPREAD_PROB:
                             new_forest[nx, ny] = BURNING
                             burn_time[nx, ny] = 1
@@ -94,7 +90,6 @@ def simulate_wildfire(seed=None, continuous_plot=False):
             plt.colorbar(label="State: 0=Empty, 1=Tree, 2=Burning, 3=Ash")
             plt.show()
 
-    print(np.array(fire_spread))
     return fire_spread
 
 def run_n_simulations_dask(n_simulations=1, seeds=None, n_workers=None, no_print=False):
@@ -132,7 +127,7 @@ def run_n_simulations_dask(n_simulations=1, seeds=None, n_workers=None, no_print
 # Run simulation
 if __name__ == "__main__":
 
-    fire_spread_over_time = run_n_simulations_dask(n_simulations=8, seeds=[i for i in range(8)])
+    fire_spread_over_time = run_n_simulations_dask(n_simulations=5, seeds=[i for i in range(5)])
     print(fire_spread_over_time)
 
     # client = Client()
