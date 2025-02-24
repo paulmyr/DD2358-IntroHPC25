@@ -7,7 +7,7 @@ from timeit import default_timer as timer
 # Grid size 
 grid_size = 200
 TIME_STEPS = 100
-CHUNK_SIZE = 100
+CHUNK_SIZE = 200
 NUM_WORKERS = 5
 
 
@@ -95,10 +95,11 @@ def run_simulation_dask(deterministic=False, profile_time=False, num_iters=TIME_
 # USES dask.distributed WITH THE SPECIFIED NUMBER OF WORKERS $
 # $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 if __name__ == "__main__":
-    client = Client(n_workers=6)
+    client = Client()
     print("Dask Dashboard running at:", client.dashboard_link)
     input("Press a key once you have gone to the dashboard...")
-    u_result, v_result, temperature_result = run_simulation_dask(deterministic=True)
+    u_result, v_result, temperature_result, _ = run_simulation_dask(deterministic=True)
+    input("Press a key to close the program...")
 
 
 

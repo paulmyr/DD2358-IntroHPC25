@@ -21,6 +21,8 @@
 **/__pycache__/
 *.lprof
 **/build/
+**/*.mov
+
 
 03_compgpu/exercise1/*.c
 03_compgpu/exercise1/*.so
