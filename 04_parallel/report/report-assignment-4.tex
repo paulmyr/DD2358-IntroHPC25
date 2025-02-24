@@ -191,6 +191,7 @@
 \section*{Prefix}
 \todo[inline]{Make sure title and headers are correctly changed!}
 \todo[inline]{Change counter to match excercise sheet}
+\todo[inline]{Write report for exercise 1}
 
 % content begin
 %
@@ -199,8 +200,11 @@
 The code for this assignment can be found in the following github repository: \url{https://github.com/paulmyr/DD2358-HPC25/tree/master/04_parallel}.
 
 \section{Wildfire Spread in Parallel}
+
+
+
 \section{Bonus: Ocean Circulation with Dask}
-The code and associated files for the bonus section can be found under the \verb|bonus/| directory of the repository, here: \url{https://github.com/paulmyr/DD2358-HPC25/tree/master/04_parallel/bonus}. The original code provided to us can be found in the \verb|ocean_deafult.py| file -- with some augmentation to help with profiling and testing against the Dask implementation.
+The code and associated files for the bonus section can be found under the \verb|bonus/| directory of the repository, here: \url{https://github.com/paulmyr/DD2358-HPC25/tree/master/04_parallel/bonus}. The original code provided to us can be found in the \verb|ocean_deafult.py| file -- with some augmentation to help with profiling and testing against the Dask implementation. The observations made, including the screenshots and video recordings, were obtained on a 2021 M1 MacBook Pro (16 inch), the specifications for which can be found \href{https://support.apple.com/en-us/111901}{here}.
 
 \subsection{Dask Implementation}
 
@@ -229,7 +233,7 @@ To ensure that the Dask implementation returns the same result as the default, w
 All 9 of these tests pass.
 
 \subsubsection{Runtime Comparison}
-We compared the running times of the default implementation against the Dask implementation with different chunk-sizes ($50 \times 50, 100 \times 100, 200 \times 200$). The code for this time profiling can be found in the \verb|ocean_profile.py| file. The following observations were obtained on a 2021 M1 MacBook Pro (16 inch), the specifications for which can be found \href{https://support.apple.com/en-us/111901}{here}
+We compared the running times of the default implementation against the Dask implementation with different chunk-sizes ($50 \times 50, 100 \times 100, 200 \times 200$). The code for this time profiling can be found in the \verb|ocean_profile.py| file. 
 
 We compared the running times of 4 versions of the simulation, where each version was run for 100, 200, 400, and 800 iterations. For each run, the runtime recorded was an average over 5 runs of the simulation. For the default python implementation, only the running time of the \verb|for| loop was recorded. For the Dask implementation, the running time of the \verb|for| loop (where the task graph is created) and of the 3 compute calls on the Dask arrays (where the actual computation is performed) was recorded. The code demarcating which portion of the simulation was timed can be found in the \verb|ocean_default.py| and the \verb|ocean_dask.py| files, in the \verb|run_simulation_default| and the \verb|run_simulation_dask| functions, respectively.
 
@@ -279,17 +283,99 @@ The second thing to note here is that for the Dask runtimes, the \textbf{smaller
 Finally, for completeness, we would also like to note the trivial observation that the runtime increases across all implementations as the number of iterations increase, as expected. 
 
 \subsection{Performance Monitoring using Dask Dashboard}
+For performance monitoring, we utilized the Dask Dashboard made available on using the \verb|dask.distributed| module's \verb|Client| class. For all We let Dask decide the default number of workers and threads per worker for the 2021 M1 MacBook Pro (16 inch) machine -- which was \textbf{5 workers, each with 2 threads}. The code where we create the \verb|Client| and perform the simulation can be found in the \verb|main| function of the \verb|ocean_dask.py| file.
 
 \subsubsection{Task Stream \& Worker Monitoring}
+We observed the \textbf{Task Stream} panel and the \textbf{Workers} panel of the Dashboard for the Dask-parallelized runs of the ocean simulation for 100 iterations. We used a chunk size of $100 \times 100$ -- resulting in \underline{4 chunks} being created for the origial $200 \times 200$ grid. \textit{Note: The chunk-size will be varied in the next section. For this section, we only talk about chunk-size of $100 \times 100$}. 
+
+On doing so, we observed the following on the \textbf{Task Stream} panel
+
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.8\textwidth]{../images/task_stream_100chunk.png}
+  \caption{Task Stream For Ocean Simulation Using Chunk Size $100 \times 100$}
+\end{figure}
+
+To help our interpretation of this visual, we referred to the following official Dask documentation: \url{https://docs.dask.org/en/latest/dashboard.html#task-stream}. What is immediately evident to us was that we observed quite a few \textbf{red rectangles}, indicating that there was a non-trivial amount of communication between workers. This seems to be related to some of the reasons for the slowness of Dask on a shared-memory architecture discussed above -- Dask explicitly communicates between chunks, which is not needed for our experimental setup and contributed to the slowdown.  
+
+The second thing that we observed is that there were 3 \textit{bursts} of computation -- where all workers seem to have no activity for a short \textit{rest} period between these 3 bursts. The Dask Documentation referred to above told us that each row here \underline{corresponds to a thread} that was involved in the computation at some time. Additionally, in each burst, there were \textbf{2 threads} had minimal participation in the computation. Since, as mentioned in the introduction, each worker as 2 threads in our setup, this lead us to believe that there was 1 worker in each \textit{computation burst} that had minimal to no contribution. This made sense to us -- since there are only 4 chunks to distribute amongst workers (for a $100 \times 100$ chunk size), there would always be 1 worker among 5 who would not be participating in a computation. 
+
+This indeed seemed to be the case when we switched over to the \textbf{Workers} tab of the Dask Dashboard. For a chunk size $100 \times 100$, for example, we can see the evolution of the CPU Usage of the 5 workers in a video recording available at this location in the repo: \href{https://github.com/paulmyr/DD2358-HPC25/tree/master/04_parallel/bonus#chunk-size-100}{link}. In the video, we can see that Worker 3 has minimal participation (as observed from the CPU Usage) for the first \textit{burst} of computation, followed by Worker 4 in the second \textit{burst}, and finally by Worker 1 in the final \textit{burst}.
+
+As observed in the video above for the \textbf{Worker} panel, the CPU Usage from each worker seems to usually not exceed the \textbf{35-40\%} range, which indicates to us that the workers are not being overburdned by computation. Similarly, the Memory Usage of each worker seems to be well below the limit throughout the course of the computation, never getting even close to the 3.2 GiB limit per worker.
+
+These observations indicate to us that one of the primary reasons for the tardiness of the Dask-Array parallelized approach seems to indeed be the overhead involved in communicating between workers and the \textit{background tasks} involved with scheduling workloads, ghost-cell overlaps, etc -- which might be overkill for a seemingly simple computation being performed on a shared-memory architecture.
 
 \subsubsection{Experiment with Different Chunk Sizes}
-
-\subsubsection{Miscellenaeous Questions}
+We varied the \textbf{chunk sizes} to see how this would impact the task distribution and workload on the 5 workers. First, we will talk about what we observed on \textbf{Task Stream} panel (for workload distribution, communication between workers, etc), followed by our observations of the \textbf{Workers} panel (for CPU and Memory Usage per worker). For this, we kept the same number of iterations (100) as in the previous section.
 
 \begin{itemize}
-\item \textbf{\underline{How well-balanced were the worker loads?}}
-\item \textbf{\underline{Did any worker run out of memory?}}
-\item \textbf{\underline{Was thre idle time or task queueing?}}
+
+\item \textbf{\underline{$50 \times 50$ Chunk Size}} \\
+When chunk-size was $50 \times 50$, we had 16 chunks in total for the $200 \times 200$ grid(s). Since we increased the number of chunks involved in the computation, we expected an increase in the number of communication between workers (or, inter-worker communication), which would in-turn lead to a slowdown in the computation being performed. Indeed, this is what we observed in the \textbf{Task Stream} panel when using $50 \times 50$ chunk-size, as is evident by an \textbf{increase in the number of red-rectangles} here. We also believe this is the \textit{increase in the scheduling overhead} that the handout was referring to, as communicating between workers for the computation on the 16 chunks seems like a scheduling-related activity to us.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.8\textwidth]{../images/task_stream_50chunk.png}
+  \caption{Task Stream For Ocean Simulation Using Chunk Size $50 \times 50$}
+\end{figure}
+
+Another thing to observe here was that while there were similar \textit{bursts} of computation across workers that we saw in the \textbf{Task Stream} for $100 \times 100$ chunk size above, in all these bursts, \textbf{all threads/workers had some contribution to the computation}. This, again, makes sense to us -- since now we have more chunks than workers, each worker (and thus thread) is always involved in the computation. Thus, Dask seems to do a good enough job in ensuring that no single worker is overburdned (even though the computation is suboptimal because of the scheduling overhead, as we have discussed earlier). 
+
+We can also see this pattern when we look at the \textbf{Workers} panel, where during each \textit{computation burst}, all workers seem to be heavily involved in the computation. A video demonstration showing the evolution of the Worker statistics over the course of a computation using $50 \times 50$ chunk sizes can be found here in the repo: \href{https://github.com/paulmyr/DD2358-HPC25/tree/master/04_parallel/bonus#chunk-size-50}{link}. In fact, the CPU Usage per worker seems to be \textbf{higher} than what was observed in the $100 \times 100$ chunk-sizes case in the previous section. We feel that this could potentially be attributed to a higher number of inter-worker communication being done to coordinate the higher number of chunks over which the computation is being performed. 
+
+However, \textbf{no noticable difference in memory consumption} was observed in the $50 \times 50$ chunk size case when compared to the $100 \times 100$ chunk size. We feel that this could potentially be attributed to the incredibly high memory-limit assigned to each worker, because of which no workers seem to face any memory issues, or seem to be overburdned when it comes to memory resources. 
+
+\item \textbf{\underline{$100 \times 100$ Chunk Size}} \\
+We had a discussion about the Task Stream and Workers panel in the $100 \times 100$ chunk-size case in the previous section, so we refrain from repeating that here. Please refer to the previous section for our analysis.
+
+\item \textbf{\underline{$200 \times 200$ Chunk Size}} \\
+When working with a chunk-size of $200 \times 200$, there is only one chunk to work with, and 5 workers (10 threads). So, we expected inter-worker communication to be \textbf{incredibly minimal}, which would mean \textbf{very few red-rectangles} in a Task Stream graph for this computation. This would also contribute to chunk-size of $200 \times 200$ being the quickest for the simulation from amongst the different Dask chunk-size configurations we tried, as was evident in the performance analysis section earlier. Indeed, this is what we saw in the Task Stream panel -- which had almost no red-rectangles.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.8\textwidth]{../images/task_stream_200chunk.png}
+  \caption{Task Stream For Ocean Simulation Using Chunk Size $200 \times 200$}
+\end{figure}
+
+Of note here is that we only see 4 threads (or 2 workers) in the Task Stream visualization for a computation with $200 \times 200$ chunk size. Based on the Dask Documentation, we believe this indicates that Dask only uses 2 workers from amongst the 5 available to perform this computation. This makes sense to us -- since there is only 1 chunk to be distributed amongst 5 workers, there is a limit to how much work can be done in parallel. Of these 2 workers as well, only one of them seems to be the one doing the majority of the computation, while the other worker seems to be only minimally involved near the beginning of the first and second \textit{computation bursts} (like the other 2 chunk-size cases, the familiar \textit{computation bursts} also make an appearance here). So to us, this seems like a waste of resources, as 3 of out 5 workers are completely idle, while 2 workers (and among them, 1 worker) does a bulk of the computation. This still seems to peform the best out of the 3 chunk-sizes we tried in terms of completion time -- which again indicates to us that this form of parallelization on a shared-memory architecture is not ideal because of the overhead involved. 
+
+We see a similar story being told in the evoluation of the information in the \textbf{Workers} panel for a computation with a chunk-size of $200 \times 200$. A video recording similar to the other 2 cases can be found here in the repo: \href{https://github.com/paulmyr/DD2358-HPC25/tree/master/04_parallel/bonus#chunk-size-200}{link}. As can be seen in the video, once the computation starts, workers 0 - 2 seem to not be involved at all. Worker 3 seems to do a bulk of the computation (evident from its CPU Usage percentage over the course of the computation), while Worker 4 seems to be minimally involved (evident from a slight increase in its CPU Usage percentage for a short time in a couple of instances). When it comes to the memory usage/load, however, we still don't see any noticable differences when compared to the other 2 chunk sizes we tried, which we feel can potentially be attributed to the large amount of memory at the disposal of each worker.
+
+\item \textbf{\underline{Conclusion}}\\
+In conclusion, on varying the chunk sizes while keeping the number of iterations and workers the same in the aforementioned setup, we see that a \textbf{decrease in the chunk sizes leads to an increase in the number of inter-worker communication}, which could contribute to an increase in the running time on a shared-memory architecture -- as was hypothesized before. 
+
+Increasing the chunk-size would \textbf{decrease the number of chunks} available, which would \textbf{in turn mean that some workers have little to no work to do}. This seems like a logical conclusion to us, as having more workers than chunks would limit the number of computations that occur in parallel. So, we do not feel this is a short-coming of the Dask Scheduler -- which seems to do a decent job at ensuring all workers have similar work loads \underline{when enough chunks are available}. However, as we saw with the $200 \times 200$ chunk case, Dask seems to prefer picking the same worker across different \textit{bursts} of computation. So, a small way in which Dask Scheduler could improve the \textit{distribution of the load} of the computation across workers would be to potentially pick different workers in between these bursts to do perform the computations (assuming the bursts are independent of each other and do not require data from previous bursts). However, we remain unsure if this would lead to any noticable advantages on a shared-memory architecutre like our personal laptops.
+
+We also \textbf{did not observe any noticable differences in memory load/consumption} when varying chunk-sizes, which we feel could potentially be attributed to the large amount of memory available to each worker, and the size of the entire grid being comparatively small (at a constant $200 \times 200$). 
+
+Finally, we believe that this profiling illustrates that \textbf{managing chunks amongst different workers} is potentially a \textbf{very significant contributor to the increased runtime} when using Dask-Array parallelization as opposed to the serial numpy implementation. This outweighs the benefits of any parallel-computation being performed, and appears to be a \textbf{suboptimal way to improve performance given our setup}. The fact that the fastest "parallel" setup involved just 1 chunk indicates to us that this approach is better suited for a distributed architecture. 
+\end{itemize}
+
+\subsubsection{Miscellenaeous Questions}
+Based on our observations and thorough discussion above, we now answer some miscellaneous questions presented to us at the end of the \textit{Bonus} section.
+
+\begin{itemize}
+\item \textbf{\underline{How well-balanced were the worker loads?}}\\
+As is evident from the Task Stream and the Worker panel recordings from the sections above, for the 3 chunk-sizes we tried, Dask seems to do a \textbf{reasonably good} job at trying to make the worker loads balanced. The best example of this, we believe, can be seen in the $50 \times 50$ chunk-size scenario, where throughout the computation, all workers seem to have a similar CPU Usage Percentage and Memory Usage/Load. 
+
+In the case of $100 \times 100$ or $200 \times 200$ chunk sizes, however, there are fewer chunks than workers available. Thus inevitably, there usually is 1 worker in the $100 \times 100$ case which has minimal contribution in the computation during a \textit{computation burst}, and a majority of the workers in the $200 \times 200$ chunk-size scenario have little to no involvement in the computation. 
+
+To us, this seems logical, and we do not think that the Dask Scheduler is to be blamed for this. As a minor improvement/alternative, however, one could say that the Dask Scheduler could attempt to "distribute" the smaller number of chunks more democratically across workers. For example, in the $200 \times 200$ case, we saw that only one worker \textbf{throughout the computation} did a bulk of the job. One alternative of this could be to try and have other workers involved as well -- for instance, Worker 0 could do the computation during the first \textit{burst}, Worker 2 could take-over in the second \textit{burst}, etc. One downside of this is that if there are dependencies in the computation between bursts, then this could lead to more memory I/O between workers in a more general setting, which might explain why Dask prefers to keep computation on a single worker in the $200 \times 200$ scenario. Thus, overall, we feel that this is only a minor alternative approach and overall, the current Dask scheduling seems to be doing a democratic job. 
+
+\item \textbf{\underline{Did any worker run out of memory?}}\\
+Based on our observations of the Worker panel across different chunk-sizes, \textbf{no worker} seems to run out of memory. As we reasoned earlier, we feel that this could be because of the large memory limit available to each worker in the setup on which the recordings/readings were made.
+
+\item \textbf{\underline{Was there idle time or task queueing?}}\\
+For all chunk-sizes, we did notice idle time between the \textit{computation bursts} that we were referring to earlier. For a given chunk size, since this idle time between \textit{bursts} was observed across all threads at similar time-frames, we believe that this idle time could be attributed to the threads/workers waiting for the scheduler to allocate and distribute new jobs to them. This duration of the "pause" between \textit{computation bursts} seems to increase with an increase in the \textbf{number of chunks} (ie, decrease in the chunk-size). This indicates to us that the pause might be because of an extra load on the scheduler to be able to distribute the larger number of tasks across workers/threads when working with smaller chunk sizes, which causes all threads to wait until they have new allocations from the scheduler. 
+
+Another instance of idle time that we see is the one that was talked about earlier -- when we have fewer chunks than workers, as in the case of a chunk size of $100 \times 100$ or $200 \times 200$. In the former, there seems to be one worker per computation burst that is idle and is not involved in the computation at all. In the latter, most workers are not involved in the computation, with the bulk of the work being done by just one worker. We have already examined this in a little more detail earlier in the report, so we refrain from repeating ourselves here. 
+
+Finally, to examine if there was any task-queuing, we looked at the \textbf{Progress} panel (available from under \textbf{More...}) on the Dask Dashboard. For all 3 chunk sizes, we observed that there was \textbf{no task queuing}, as can be seen for the video demonstration over the course of the computation for each chunk-size in the code repository. Here are the links for the different chunk sizes: \href{https://github.com/paulmyr/DD2358-HPC25/tree/master/04_parallel/bonus#chunk-size-50-1}{$50 \times 50$}, \href{https://github.com/paulmyr/DD2358-HPC25/tree/master/04_parallel/bonus#chunk-size-100-1}{$100 \times 100$}, \href{https://github.com/paulmyr/DD2358-HPC25/tree/master/04_parallel/bonus#chunk-size-200-1}{$200 \times 200$}. For each of these videos, we looked at the \verb|queued| number at the top of the panel, which remains 0 throughout the computation. We took this to mean that there were \textbf{no queued tasks} for all chunk-sizes over the course of the computation.
+
+To understand this observation, we looked at what the meaining of the different task-status is. For this, we referred to the following Dask Documentation: \href{https://distributed.dask.org/en/stable/scheduling-state.html#task-state}{link}. Based on this documentation, a queued task is "Ready to be computed, but all workers are already full". This in turn means that it has all the dependencies required for computing the task, but no worker is available to perform this computation. There were no tasks with this status throughout. However, there were always tasks with the status \verb|waiting|, which according to the documentation, means the task is "On track to be computed, waiting on dependencies to arrive in memory". Thus, our conclusion from this observation was that for our computation, \textbf{once the dependenceis required to compute the task arrive in memory}, the task is \textbf{almost immediately assigned to a worker} (or assigned quick enough for it not to receive a \verb|queued| status) by the scheduler. This seems to be the case for all chunk-sizes.
+
 \end{itemize}
 
 \subsubsection{VTK Files and Paraview}
