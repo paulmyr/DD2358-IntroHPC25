@@ -15,10 +15,12 @@ BURNING = 2  # Burning tree
 ASH = 3  # Burned tree
 
 
-def initialize_forest(seed):
+def initialize_forest(seed=None):
     """Creates a forest grid with all trees and ignites one random tree."""
-    np.random.seed(seed)
-    random.seed(seed)
+    if seed:
+        np.random.seed(seed)
+        random.seed(seed)
+
     forest = np.ones((GRID_SIZE, GRID_SIZE), dtype=int)  # All trees
     burn_time = np.zeros((GRID_SIZE, GRID_SIZE), dtype=int)  # Tracks how long a tree burns
 
@@ -40,7 +42,7 @@ def get_neighbors(x, y):
     return neighbors
 
 
-def simulate_wildfire(seed):
+def simulate_wildfire(seed=None, continuous_plot=True):
     """Simulates wildfire spread over time."""
     forest, burn_time = initialize_forest(seed)
 
@@ -60,8 +62,11 @@ def simulate_wildfire(seed):
 
                     # Spread fire to neighbors
                     for nx, ny in get_neighbors(x, y):
-                        # (Re)-Setting the seed inside the loop helps with reproducability for Dask
-                        random.seed(seed)
+                        if seed:
+                            # (Re)-Setting the seed inside the loop helps with reproducability for Dask
+                            # This is being set here to be able to verify correctness. In actual simulation
+                            # we can prevent any seed from being set to get true randomness.
+                            random.seed(seed)
                         if forest[nx, ny] == TREE and random.random() < FIRE_SPREAD_PROB:
                             new_forest[nx, ny] = BURNING
                             burn_time[nx, ny] = 1
@@ -75,25 +80,50 @@ def simulate_wildfire(seed):
             break
 
         # Plot grid every 5 days
-        if day % 5 == 0 or day == DAYS - 1:
+        if continuous_plot and (day % 5 == 0 or day == DAYS - 1):
             plt.figure(figsize=(6, 6))
             plt.imshow(forest, cmap='viridis', origin='upper')
             plt.title(f"Wildfire Spread - Day {day}")
             plt.colorbar(label="State: 0=Empty, 1=Tree, 2=Burning, 3=Ash")
             plt.show()
 
-    print(np.array(fire_spread))
     return fire_spread
 
 
-# Run simulation
-fire_spread_over_time = simulate_wildfire(1)
+def run_n_simulations_default(n_simulations=1, seeds=None, no_print=False):
+    """
+    Runs n_simulations SERIALLY, and returns an average of the fire_spread over time that is obtained
+    from each run. 
+    seeds refers to an array of seeds, which MUST match the number of simulations. If provided, it is used
+    to help with reproducability of the results
+    """
+    if seeds and len(seeds) != n_simulations:
+        print("Number of seeds must match number of simulations")
+        return
 
-# Plot results
-plt.figure(figsize=(8, 5))
-plt.plot(range(len(fire_spread_over_time)), fire_spread_over_time, label="Burning Trees")
-plt.xlabel("Days")
-plt.ylabel("Number of Burning Trees")
-plt.title("Wildfire Spread Over Time")
-plt.legend()
-plt.show()
+    all_results = []
+    for i in range(n_simulations):
+        curr_seed = None if not seeds else seeds[i]
+        # Continuous plotting does not make a lot of sense when multiple simulations are being run.
+        # So, we prevent doing that here.
+        curr_spread = simulate_wildfire(curr_seed, continuous_plot=False)
+        all_results.append(curr_spread)
+        if not no_print:
+            print(f"[SERIAL] Simulation {i} completed.")
+    
+    # Return the average of the individual simulations, where the average is taken over the columns
+    # This is because each column represents a single day. 
+    return np.array(all_results).mean(axis=0)
+
+if __name__ == "__main__":
+    # Run Multiple Simulations Serially
+    fire_spread_over_time = run_n_simulations_default(n_simulations=5)
+
+    # Plot results
+    plt.figure(figsize=(8, 5))
+    plt.plot(range(len(fire_spread_over_time)), fire_spread_over_time, label="Burning Trees")
+    plt.xlabel("Days")
+    plt.ylabel("Number of Burning Trees")
+    plt.title("Wildfire Spread Over Time")
+    plt.legend()
+    plt.show()
