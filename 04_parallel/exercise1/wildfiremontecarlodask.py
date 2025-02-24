@@ -92,7 +92,7 @@ def simulate_wildfire(seed=None, continuous_plot=False):
 
     return fire_spread
 
-def run_n_simulations_dask(n_simulations=1, seeds=None, n_workers=None, no_print=False):
+def run_n_simulations_dask(n_simulations=1, seeds=None, n_workers=None, no_print=False, show_line_plot=False):
     """
     Runs n_simulations PARALLELY, using Dask, and returns an average of the fire_spread over time that is 
     obtained from each run.
@@ -122,44 +122,24 @@ def run_n_simulations_dask(n_simulations=1, seeds=None, n_workers=None, no_print
     avg = rechunked_result.mean(axis=0)
     result = avg.compute()
 
+    if show_line_plot:
+        # Using matplotlib in the delayed simulate_wildfire function leads to an exception indicating that
+        # "NSWindow should only be instantiated on the main thread!". For this reason, plot them here instead
+        individual_results = result_da.compute()
+        for i in range(n_simulations):
+            plt.plot(range(len(individual_results[i])), individual_results[i], label=f"Simulation no: {i}",  alpha=0.3, linestyle="--")
+    
     return result
 
 # Run simulation
 if __name__ == "__main__":
 
-    fire_spread_over_time = run_n_simulations_dask(n_simulations=5, seeds=[i for i in range(5)])
-    print(fire_spread_over_time)
+    fire_spread_over_time = run_n_simulations_dask(n_simulations=5, seeds=[i for i in range(5)], show_line_plot=True)
 
-    # client = Client()
-    # # TODO: Add some kind of "halting" method here, so that user can go to the dashbboard, press enter key, and then
-    # # go on to the next screen so that they can monitor stuff nicely
-    # print(client)
-    # print(client.dashboard_link)
-    # seeds =[i for i in range(NUM_SIMULATIONS)]
-
-    # # The individual simulations to run in parallel, we get a 2D numpy array afterwards
-    # tasks = delayed(lambda arr: np.array(arr))([simulate_wildfire(i) for i in seeds])
-    # # Getting a single dask array of with counts for all 60 days across all simulations
-    # arr = da.from_delayed(tasks, shape=(NUM_SIMULATIONS, DAYS), dtype=da.float32)
-    # # Rechunk based on columns -- THIS IS WHERE WE CAN CONTROL THE CHUNK SIZE
-    # arr = arr.rechunk((CHUNK_SIZE, DAYS))
-    # # Compute the mean of the individual chunks 
-    # avg = arr.mean(axis=0)
-    # # TODO: How do we vary the workers? 
-    # result = avg.compute(num_workers=6)
-    # print("--------------- Printing Average --------------------")
-    # print(result)
-
-    # n = result.shape[0]
-    # print(n)
-    # # Plot results
-    # plt.figure(figsize=(8, 5))
-    # # for i in range(n):
-    # #     plt.plot(np.arange(0, m), result[i], label=f"Simulation no: {i}")
-    # plt.plot(np.arange(0,n), result, label="Avg Fire Spread over Time")
-    # plt.xlabel("Days")
-    # plt.ylabel("Number of Burning Trees")
-    # plt.title("Wildfire Spread Over Time")
-    # plt.legend()
-    # plt.show()
-    # dask.visualize(*result)
+    # Plot results
+    plt.plot(range(len(fire_spread_over_time)), fire_spread_over_time, label="Average Burning Trees")
+    plt.xlabel("Days")
+    plt.ylabel("Number of Burning Trees")
+    plt.title("Wildfire Spread Over Time [Dask]")
+    plt.legend()
+    plt.show()

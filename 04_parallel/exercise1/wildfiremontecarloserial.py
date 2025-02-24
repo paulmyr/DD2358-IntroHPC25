@@ -83,7 +83,7 @@ def simulate_wildfire(seed=None, continuous_plot=False):
     return fire_spread
 
 
-def run_n_simulations_default(n_simulations=1, seeds=None, no_print=False):
+def run_n_simulations_default(n_simulations=1, seeds=None, no_print=False, show_line_plot=False):
     """
     Runs n_simulations SERIALLY, and returns an average of the fire_spread over time that is obtained
     from each run. 
@@ -104,18 +104,19 @@ def run_n_simulations_default(n_simulations=1, seeds=None, no_print=False):
         if not no_print:
             print(f"[SERIAL] Simulation {i} with seed {curr_seed} completed.")
     
+    if show_line_plot:
+        for i in range(n_simulations):
+            plt.plot(range(len(all_results[i])), all_results[i], label=f"Simulation no: {i}",  alpha=0.3, linestyle="--")
+
     # Return the average of the individual simulations, where the average is taken over the columns
     # This is because each column represents a single day. 
     return np.array(all_results).mean(axis=0)
 
 if __name__ == "__main__":
     # Run Multiple Simulations Serially
-    fire_spread_over_time = run_n_simulations_default(n_simulations=5, seeds=[i for i in range(5)])
-
-    print(fire_spread_over_time)
+    fire_spread_over_time = run_n_simulations_default(n_simulations=5, seeds=[i for i in range(5)], show_line_plot=True)
 
     # Plot results
-    plt.figure(figsize=(8, 5))
     plt.plot(range(len(fire_spread_over_time)), fire_spread_over_time, label="Burning Trees")
     plt.xlabel("Days")
     plt.ylabel("Number of Burning Trees")

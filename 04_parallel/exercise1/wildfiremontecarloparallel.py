@@ -85,7 +85,7 @@ def simulate_wildfire(seed=None, continuous_plot=False):
 
     return fire_spread
 
-def run_n_simulations_parallel(n_simulations=1, seeds=None):
+def run_n_simulations_parallel(n_simulations=1, seeds=None, show_line_plot=False):
     """
     Runs n_simulations PARALLELY, using the multiprocessing module, and returns an average of the fire_spread over time that is 
     obtained from each run.
@@ -98,6 +98,10 @@ def run_n_simulations_parallel(n_simulations=1, seeds=None):
     
     with Pool(n_simulations) as pool:
         fire_spread_over_time = pool.map(simulate_wildfire, seeds)
+
+    if show_line_plot:
+        for i in range(n_simulations):
+            plt.plot(range(len(fire_spread_over_time[i])), fire_spread_over_time[i], label=f"Simulation no: {i}",  alpha=0.3, linestyle="--")
     
     # Return the mean of the spread for each day obtained over the number of simulations
     return np.array(fire_spread_over_time).mean(axis=0)
@@ -106,35 +110,10 @@ def run_n_simulations_parallel(n_simulations=1, seeds=None):
 # Run simulation
 if __name__ == "__main__":
     # Run Multiple Simulations in Parallel using Multiprocessing
-    fire_spread_over_time = run_n_simulations_parallel(n_simulations=5, seeds=[i for i in range(5)])
-
-    print(fire_spread_over_time)
-
-    # num_workers = 5#
-    # seed = [i for i in range(num_workers)]
-    # with Pool(num_workers) as pool:
-    #     fire_spread_over_time = pool.map(simulate_wildfire, seed)
-    # print(fire_spread_over_time)
-    # fire_spread_over_time = np.array(fire_spread_over_time)
-    # n, m = fire_spread_over_time.shape
-    # print(n, m)
-    # fire_spread_over_time_mean = fire_spread_over_time.mean(axis=0)
-    # print(fire_spread_over_time)
+    fire_spread_over_time = run_n_simulations_parallel(n_simulations=5, seeds=[i for i in range(5)], show_line_plot=True)
 
     # Plot results
-    # plt.figure(figsize=(8, 5))
-    # for i in range(n):
-    #     plt.plot(np.arange(0, m), fire_spread_over_time[i], label=f"Simulation no: {i}")
-    # plt.plot(np.arange(0,m), fire_spread_over_time_mean, label="Avg Fire Spread over Time")
-    # plt.xlabel("Days")
-    # plt.ylabel("Number of Burning Trees")
-    # plt.title("Wildfire Spread Over Time")
-    # plt.legend()
-    # plt.show()
-
-    # Plot results
-    plt.figure(figsize=(8, 5))
-    plt.plot(range(len(fire_spread_over_time)), fire_spread_over_time, label="Burning Trees")
+    plt.plot(range(len(fire_spread_over_time)), fire_spread_over_time, label="Average Burning Trees")
     plt.xlabel("Days")
     plt.ylabel("Number of Burning Trees")
     plt.title("Wildfire Spread Over Time [Multiprocessing]")
