@@ -17,9 +17,8 @@ ASH = 3  # Burned tree
 
 def initialize_forest(seed=None):
     """Creates a forest grid with all trees and ignites one random tree."""
-    if seed:
-        np.random.seed(seed)
-        random.seed(seed)
+    np.random.seed(seed)
+    random.seed(seed)
 
     forest = np.ones((GRID_SIZE, GRID_SIZE), dtype=int)  # All trees
     burn_time = np.zeros((GRID_SIZE, GRID_SIZE), dtype=int)  # Tracks how long a tree burns
@@ -42,7 +41,7 @@ def get_neighbors(x, y):
     return neighbors
 
 
-def simulate_wildfire(seed=None, continuous_plot=True):
+def simulate_wildfire(seed=None, continuous_plot=False):
     """Simulates wildfire spread over time."""
     forest, burn_time = initialize_forest(seed)
 
@@ -62,11 +61,10 @@ def simulate_wildfire(seed=None, continuous_plot=True):
 
                     # Spread fire to neighbors
                     for nx, ny in get_neighbors(x, y):
-                        if seed:
-                            # (Re)-Setting the seed inside the loop helps with reproducability for Dask
-                            # This is being set here to be able to verify correctness. In actual simulation
-                            # we can prevent any seed from being set to get true randomness.
-                            random.seed(seed)
+                        # (Re)-Setting the seed inside the loop helps with reproducability for Dask
+                        # This is being set here to be able to verify correctness. In actual simulation
+                        # we can prevent any seed from being set to get true randomness.
+                        random.seed(seed)
                         if forest[nx, ny] == TREE and random.random() < FIRE_SPREAD_PROB:
                             new_forest[nx, ny] = BURNING
                             burn_time[nx, ny] = 1
@@ -109,7 +107,7 @@ def run_n_simulations_default(n_simulations=1, seeds=None, no_print=False):
         curr_spread = simulate_wildfire(curr_seed, continuous_plot=False)
         all_results.append(curr_spread)
         if not no_print:
-            print(f"[SERIAL] Simulation {i} completed.")
+            print(f"[SERIAL] Simulation {i} with seed {curr_seed} completed.")
     
     # Return the average of the individual simulations, where the average is taken over the columns
     # This is because each column represents a single day. 
@@ -117,13 +115,15 @@ def run_n_simulations_default(n_simulations=1, seeds=None, no_print=False):
 
 if __name__ == "__main__":
     # Run Multiple Simulations Serially
-    fire_spread_over_time = run_n_simulations_default(n_simulations=5)
+    fire_spread_over_time = run_n_simulations_default(n_simulations=5, seeds=[i for i in range(5)])
+
+    print(fire_spread_over_time)
 
     # Plot results
     plt.figure(figsize=(8, 5))
     plt.plot(range(len(fire_spread_over_time)), fire_spread_over_time, label="Burning Trees")
     plt.xlabel("Days")
     plt.ylabel("Number of Burning Trees")
-    plt.title("Wildfire Spread Over Time")
+    plt.title("Wildfire Spread Over Time [Serial]")
     plt.legend()
     plt.show()

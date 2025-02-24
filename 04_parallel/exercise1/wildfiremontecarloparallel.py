@@ -19,10 +19,11 @@ BURNING = 2  # Burning tree
 ASH = 3  # Burned tree
 
 
-def initialize_forest(seed):
+def initialize_forest(seed=None):
     """Creates a forest grid with all trees and ignites one random tree."""
-    random.seed(seed)
     np.random.seed(seed)
+    random.seed(seed)
+
     forest = np.ones((GRID_SIZE, GRID_SIZE), dtype=int)  # All trees
     burn_time = np.zeros((GRID_SIZE, GRID_SIZE), dtype=int)  # Tracks how long a tree burns
 
@@ -44,10 +45,9 @@ def get_neighbors(x, y):
     return neighbors
 
 
-def simulate_wildfire(seed):
+def simulate_wildfire(seed=None, continuous_plot=False):
     """Simulates wildfire spread over time."""
     forest, burn_time = initialize_forest(seed)
-    random.seed(seed)
 
     fire_spread = []  # Track number of burning trees each day
 
@@ -66,6 +66,8 @@ def simulate_wildfire(seed):
                     # Spread fire to neighbors
                     for nx, ny in get_neighbors(x, y):
                         # (Re)-Setting the seed inside the loop helps with reproducability for Dask
+                        # This is being set here to be able to verify correctness. In actual simulation
+                        # we can prevent any seed from being set to get true randomness.
                         random.seed(seed)
                         if forest[nx, ny] == TREE and random.random() < FIRE_SPREAD_PROB:
                             new_forest[nx, ny] = BURNING
@@ -78,37 +80,69 @@ def simulate_wildfire(seed):
             if day < DAYS - 1:
                 fire_spread += [0 for _ in range(DAYS - 1 - day)]
             break
-        #
-        # # Plot grid every 5 days
-        # if day % 5 == 0 or day == DAYS - 1:
-        #     plt.figure(figsize=(6, 6))
-        #     plt.imshow(forest, cmap='viridis', origin='upper')
-        #     plt.title(f"Wildfire Spread - Day {day}")
-        #     plt.colorbar(label="State: 0=Empty, 1=Tree, 2=Burning, 3=Ash")
-        #     plt.show()
+
+        # Plot grid every 5 days
+        if continuous_plot and (day % 5 == 0 or day == DAYS - 1):
+            plt.figure(figsize=(6, 6))
+            plt.imshow(forest, cmap='viridis', origin='upper')
+            plt.title(f"Wildfire Spread - Day {day}")
+            plt.colorbar(label="State: 0=Empty, 1=Tree, 2=Burning, 3=Ash")
+            plt.show()
 
     return fire_spread
+
+def run_n_simulations_parallel(n_simulations=1, seeds=None, no_print=False):
+    """
+    Runs n_simulations PARALLELY, using the multiprocessing module, and returns an average of the fire_spread over time that is 
+    obtained from each run.
+    seeds refers to an array of seeds, which MUST match the number of simulations. If provided, it is used
+    to help with reproducability of the results
+    """
+    if seeds and len(seeds) != n_simulations:
+        print("Number of seeds must match number of simulations")
+        return
+    
+    with Pool(n_simulations) as pool:
+        fire_spread_over_time = pool.map(simulate_wildfire, seeds)
+    
+    # Return the mean of the spread for each day obtained over the number of simulations
+    return np.array(fire_spread_over_time).mean(axis=0)
 
 
 # Run simulation
 if __name__ == "__main__":
-    num_workers = 5#
-    seed = [i for i in range(num_workers)]
-    with Pool(num_workers) as pool:
-        fire_spread_over_time = pool.map(simulate_wildfire, seed)
+    # Run Multiple Simulations in Parallel using Multiprocessing
+    fire_spread_over_time = run_n_simulations_parallel(n_simulations=5, seeds=[i for i in range(5)])
+
     print(fire_spread_over_time)
-    fire_spread_over_time = np.array(fire_spread_over_time)
-    n, m = fire_spread_over_time.shape
-    print(n, m)
-    fire_spread_over_time_mean = fire_spread_over_time.mean(axis=0)
-    print(fire_spread_over_time)
+
+    # num_workers = 5#
+    # seed = [i for i in range(num_workers)]
+    # with Pool(num_workers) as pool:
+    #     fire_spread_over_time = pool.map(simulate_wildfire, seed)
+    # print(fire_spread_over_time)
+    # fire_spread_over_time = np.array(fire_spread_over_time)
+    # n, m = fire_spread_over_time.shape
+    # print(n, m)
+    # fire_spread_over_time_mean = fire_spread_over_time.mean(axis=0)
+    # print(fire_spread_over_time)
+
+    # Plot results
+    # plt.figure(figsize=(8, 5))
+    # for i in range(n):
+    #     plt.plot(np.arange(0, m), fire_spread_over_time[i], label=f"Simulation no: {i}")
+    # plt.plot(np.arange(0,m), fire_spread_over_time_mean, label="Avg Fire Spread over Time")
+    # plt.xlabel("Days")
+    # plt.ylabel("Number of Burning Trees")
+    # plt.title("Wildfire Spread Over Time")
+    # plt.legend()
+    # plt.show()
+
     # Plot results
     plt.figure(figsize=(8, 5))
-    for i in range(n):
-        plt.plot(np.arange(0, m), fire_spread_over_time[i], label=f"Simulation no: {i}")
-    plt.plot(np.arange(0,m), fire_spread_over_time_mean, label="Avg Fire Spread over Time")
+    plt.plot(range(len(fire_spread_over_time)), fire_spread_over_time, label="Burning Trees")
     plt.xlabel("Days")
     plt.ylabel("Number of Burning Trees")
-    plt.title("Wildfire Spread Over Time")
+    plt.title("Wildfire Spread Over Time [Multiprocessing]")
     plt.legend()
     plt.show()
