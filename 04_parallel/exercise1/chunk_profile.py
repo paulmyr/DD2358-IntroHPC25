@@ -54,6 +54,9 @@ def profile():
     plt.xlabel('Columns in Chunk')
     plt.ylabel('Running Time (s)')
 
+    # Set the appropriate y-limit to ensure that times are clearly visible
+    plt.ylim(1, 14)
+
     # Adding a title to the plot
     plt.title('Time Taken for 8 Simulations Based on Chunk Division (log-log)')
     plt.legend(loc='upper left')
