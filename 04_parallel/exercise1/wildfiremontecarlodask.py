@@ -6,6 +6,7 @@ import dask.array as da
 import numpy as np
 import matplotlib.pyplot as plt
 import random
+from timeit import default_timer as timer
 
 import pdb
 
@@ -15,7 +16,6 @@ FIRE_SPREAD_PROB = 0.3  # Probability that fire spreads to a neighboring tree
 BURN_TIME = 3  # Time before a tree turns into ash
 DAYS = 60  # Maximum simulation time
 NUM_SIMULATIONS = 5 # The number of simulations to run in parallel
-CHUNK_SIZE = NUM_SIMULATIONS
 
 # State definitions
 EMPTY = 0  # No tree
@@ -90,9 +90,10 @@ def simulate_wildfire(seed=None, continuous_plot=False):
             plt.colorbar(label="State: 0=Empty, 1=Tree, 2=Burning, 3=Ash")
             plt.show()
 
-    return fire_spread
+    # Returning a numpy array here to save some time on Dask Computation
+    return np.array(fire_spread)
 
-def run_n_simulations_dask(n_simulations=1, seeds=None, n_workers=None, no_print=False, show_line_plot=False):
+def run_n_simulations_dask(n_simulations=NUM_SIMULATIONS, seeds=None, no_print=False, show_line_plot=False, chunk_size=None):
     """
     Runs n_simulations PARALLELY, using Dask, and returns an average of the fire_spread over time that is 
     obtained from each run.
@@ -102,30 +103,24 @@ def run_n_simulations_dask(n_simulations=1, seeds=None, n_workers=None, no_print
     if seeds and len(seeds) != n_simulations:
         print("Number of seeds must match number of simulations")
         return
-    
-    client = None
-    # Use default number of workers if no explicit number provided
-    if n_workers:
-        client = Client(n_workers)
-    else:
-        client = Client()
-    
-    if not no_print:
-        print(f"Client dashboard available at: f{client.dashboard_link}")
-        input("Press a key once you have gone to the dashboard...") 
+
+    # Set chunk size if not provided. We default to 1 chunk
+    final_chunk_size = chunk_size
+    if not chunk_size:
+        final_chunk_size = (n_simulations, DAYS)
 
     actual_seeds = [None]*n_simulations if not seeds else seeds
 
-    tasks = delayed(lambda arr: np.array(arr))([simulate_wildfire(i) for i in actual_seeds])
-    result_da = da.from_delayed(tasks, shape=(NUM_SIMULATIONS, DAYS), dtype=da.float32)
-    rechunked_result = result_da.rechunk((CHUNK_SIZE, DAYS))
-    avg = rechunked_result.mean(axis=0)
-    result = avg.compute()
+    tasks = [simulate_wildfire(i) for i in actual_seeds]
+    output_as_dask = [da.from_delayed(burning, shape=(DAYS,), dtype=da.float32) for burning in tasks]
+    dask_array = da.stack(output_as_dask, axis=0)
+    rechunked_result = dask_array.rechunk(final_chunk_size)
+    result = rechunked_result.mean(axis=0).compute()
 
     if show_line_plot:
         # Using matplotlib in the delayed simulate_wildfire function leads to an exception indicating that
         # "NSWindow should only be instantiated on the main thread!". For this reason, plot them here instead
-        individual_results = result_da.compute()
+        individual_results = dask_array.compute()
         for i in range(n_simulations):
             plt.plot(range(len(individual_results[i])), individual_results[i], label=f"Simulation no: {i}",  alpha=0.3, linestyle="--")
     
@@ -133,6 +128,11 @@ def run_n_simulations_dask(n_simulations=1, seeds=None, n_workers=None, no_print
 
 # Run simulation
 if __name__ == "__main__":
+    
+    # Using default number of workers
+    client = Client()
+    print(f"Client dashboard available at: f{client.dashboard_link}")
+    input("Press a key once you have gone to the dashboard...") 
 
     fire_spread_over_time = run_n_simulations_dask(n_simulations=5, seeds=[i for i in range(5)], show_line_plot=True)
 

@@ -85,7 +85,7 @@ def simulate_wildfire(seed=None, continuous_plot=False):
 
     return fire_spread
 
-def run_n_simulations_parallel(n_simulations=1, seeds=None, show_line_plot=False):
+def run_n_simulations_parallel(n_simulations=1, seeds=None, show_line_plot=False, no_print=False):
     """
     Runs n_simulations PARALLELY, using the multiprocessing module, and returns an average of the fire_spread over time that is 
     obtained from each run.
