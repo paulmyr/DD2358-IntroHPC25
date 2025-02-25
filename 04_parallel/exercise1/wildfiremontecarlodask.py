@@ -111,10 +111,19 @@ def run_n_simulations_dask(n_simulations=NUM_SIMULATIONS, seeds=None, no_print=F
 
     actual_seeds = [None]*n_simulations if not seeds else seeds
 
+    # Array of delayed Dask Tasks
     tasks = [simulate_wildfire(i) for i in actual_seeds]
+    # Create this intermediate data structure so that we can eventually have a 2d Dask Array
+    # Note that all tasks in `tasks` *will* return a 1d array *once* they are computed. However,
+    # since `simulate_wildfire` is a delayed computation, we use `from_delayed` here instead of `from_array`
     output_as_dask = [da.from_delayed(burning, shape=(DAYS,), dtype=da.float32) for burning in tasks]
+    # We specify to dask how we want it to combine the outputs of the simulations. We want the columns to match
+    # ie, first index of sim1 to be "below" first index of sim2, etc. So, use axis=0
     dask_array = da.stack(output_as_dask, axis=0)
+    # This is used for testing how chunk-size impacts computation speed. We chunk our arrays so that averages for 
+    # each day(s) can be computed in parallel.
     rechunked_result = dask_array.rechunk(final_chunk_size)
+    # Finally, compute the average along the columns and get the result.
     result = rechunked_result.mean(axis=0).compute()
 
     if show_line_plot:

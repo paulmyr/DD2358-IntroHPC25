@@ -19,18 +19,20 @@ def profile_function(func_to_profile, impl_type):
     print(f"PROFILING COMPUTATION FOR {impl_type} IMPLEMENTATION (runs={NUM_RUNS})")
 
     for curr_sims in NUM_SIMS:
-        total_time = 0
-        seeds = [i for i in range(curr_sims)]
+        # Create as many workers as there are simulations to get as much parallelism as possible. Also just use 1 thread.
+        with Client(n_workers=curr_sims, threads_per_worker=1) as client:
+            total_time = 0
+            seeds = [i for i in range(curr_sims)]
 
-        for _ in range(NUM_RUNS):
-            t1 = timer()
-            # We don't care about the result here
-            func_to_profile(n_simulations=curr_sims, seeds=seeds, no_print=True)
-            t2 = timer()
-            total_time += (t2 - t1)
+            for _ in range(NUM_RUNS):
+                t1 = timer()
+                # We don't care about the result here
+                func_to_profile(n_simulations=curr_sims, seeds=seeds, no_print=True)
+                t2 = timer()
+                total_time += (t2 - t1)
         
-        times.append(total_time / NUM_RUNS)
-        print(f"Avg Time for {curr_sims} simulations: {total_time / NUM_RUNS} s ")
+            times.append(total_time / NUM_RUNS)
+            print(f"Avg Time for {curr_sims} simulations: {total_time / NUM_RUNS} s ")
     
     # Plot the timess
     plt.loglog(NUM_SIMS, times, marker="o", linestyle='-', label=impl_type)
@@ -42,10 +44,8 @@ def profile():
     # Get the times
     profile_function(run_n_simulations_default, "serial")
     profile_function(run_n_simulations_parallel, "multiprocessing")
+    profile_function(run_n_simulations_dask, "dask")
 
-    # Use the distributed Client -- defaults to 5 workers, 2 threads per worker on M1 Macbook Pro 2021 (16 inch)
-    with Client() as client:
-        profile_function(run_n_simulations_dask, "dask")
 
     # Adding labels to the axes
     plt.xlabel('Num Simulations')

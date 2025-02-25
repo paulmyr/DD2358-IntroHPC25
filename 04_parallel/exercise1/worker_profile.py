@@ -3,9 +3,8 @@ import matplotlib.pyplot as plt
 from dask.distributed import Client
 from timeit import default_timer as timer
 
-# We keep the number of simulations at a constant 8.
 NUM_SIMS = [8, 16]
-NUM_WORKERS = [2, 4, 8, 14]
+NUM_WORKERS = [2, 4, 8, 16]
 NUM_RUNS = 3
 
 

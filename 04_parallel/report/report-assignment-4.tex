@@ -191,7 +191,8 @@
 \section*{Prefix}
 \todo[inline]{Make sure title and headers are correctly changed!}
 \todo[inline]{Change counter to match excercise sheet}
-\todo[inline]{Write report for exercise 1}
+\todo[inline]{Visualization VTK for Exercise 1}
+\todo[inline]{Visualization VTK for Bonus}
 
 % content begin
 %
@@ -200,8 +201,174 @@
 The code for this assignment can be found in the following github repository: \url{https://github.com/paulmyr/DD2358-HPC25/tree/master/04_parallel}.
 
 \section{Wildfire Spread in Parallel}
+The code and associated files for Exercise 1 can be found under the \verb|exercisd1/| directory of the repository, here: \url{https://github.com/paulmyr/DD2358-HPC25/tree/master/04_parallel/exercise1}. The original, serial implementation provided to us is present in the \verb|wildfiremontecarloserial.py| file. This code has been modified and has additional function to run multiple simulations, along with code to save the grid output at certain intervals for the VTK visualization. All the results and runtimes that follow were obtained an a 2021 M1 MacBook Pro (16 inch), which has 10 cores. More information on its specifications are \href{https://support.apple.com/en-us/111901}{here}.
+
+Since the essence of this task required us to run multiple visualizations, we refrain from outputting the visualization of the grid for each simulation at certain intervals. Instead, at the end of the simulation (for all implementations), we plot a line graph showing dotted lines with the number of burned trees for all simulations, along with a darker line showing the average number of trees burned per day using the data from all simulations. To make sure that the results are reproducible, we use seeds from 0 to $n-1$ for $n$ simulations for all implementations. 
+
+With this method, we get the following line-plot for the \textbf{serial implementation}, where we ran 5 simulations
 
 
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.8\textwidth]{../images/a4_ex1_serial_example.png}
+  \caption{Average Trees Burned Per Day (Serial)}
+\end{figure}
+
+
+\subsection{Parallelization Using \textit{multiprocessing} Module}
+The code where we parallelize using the \verb|multiprocessing| module is present in the \verb|wildfiremontecarloparallel.py| file. To summarize our implementation, we use \verb|multiprocessing.Pool| to spawn as many worker processes as we need simulations, and then use the \verb|map| function of \verb|Pool| to distribute the independent simulations across workers. We then take a column-wise mean of the result accumulated in the 2D array, converting it to a \verb|numpy| array beforehand. Thus, we return the average number of trees burned on each day based on the results for that day from the independent simulations.
+
+With this implementation, we ran 5 simulations at once, and obtained the following line-plot. Notice that it is identical to the one obtained for the serial implementation, because of our use of seeds.
+
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.8\textwidth]{../images/a4_ex1_multiprocessing_example.png}
+  \caption{Average Trees Burned Per Day (Multiprocessing)}
+\end{figure}
+
+\subsection{Parallelization Using Dask}
+For the Dask parallelization, we followed the steps below: 
+\begin{enumerate}
+\item Convert \verb|simulate_wildfire| to a Dask-Delayed function with the \verb|@delayed| annotation. We converted \verb|fire_spread| into a \verb|numpy| array before returning. This made the code for getting a dask array of the results cleaner.
+\item We created an array of delayed \verb|simulate_wildfire| \textbf{tasks}, where the number of delayed tasks was equal to the numer of independend simulations required.
+\item We created an intermediate array/data-structure of the delayed results (array) from the individual \verb|simulate_wildfire| tasks, using the \verb|from_delayed| function. The difference between this step and the previous one is that the former was an array of delayed \textbf{tasks}. However here, we are using the output that \textit{will} be returned from the tasks and indicating to Dask that we want them to be converted to Dask Arrays.
+\item We used the \verb|stack| method of \verb|dask.array| to give the array of individual simulation results a shape that will facilitate the averaging of the number of burned trees per day.
+\item We used the \verb|rechunk| operation on the result of the previous step to obtain chunks of required size. This was used to determine the impact of chunk-size (if any) on the run-time of the Dask optimization. Since the handout talked about converting the results of the simulations to a dask array, we assumed that the chunk-size impact was to be measured on this. We chunk our results array so that the averages for the days can be computed in parallel. Thus, the chunk size will have the form (\verb|num_simulations|, $x$), where $x$ is the number of days we want to assign to each chunk.
+\item Finally, we average the burning trees for each day and compute the result. 
+\end{enumerate}
+
+With this implementation, we obtained the following line-plot for 5 simulations (identical to the plot for the previous 2 implementations because of seeding).
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.8\textwidth]{../images/a4_ex1_dask_example.png}
+  \caption{Average Trees Burned Per Day (Dask)}
+\end{figure}
+
+We also utilized the local \verb|Client| from \verb|dask.distributed|. We used the default configuration of the client, which on the 2021 M1 MacBook Pro (16''), was \textbf{\underline{5 workers, each with 2 threads}}. 
+
+You can see a videos showing information from the \textbf{Status} and \textbf{Worker} Panel of the Dask Dashboard in the \verb|README.md| file for this directory at the repository, here: \href{https://github.com/paulmyr/DD2358-HPC25/tree/master/04_parallel/exercise1#readme}{link}. These recordings are from running 5 simulations at once using our Dask parallelization technique. 
+
+The \textbf{Status} panel video (\href{https://github.com/paulmyr/DD2358-HPC25/tree/master/04_parallel/exercise1#the-status-panel}{link}) shows us the change in memory consumption, task distribution to the threads by the scheduler, and other important information at a glance. 
+
+The \textbf{Workers} panel video (\href{https://github.com/paulmyr/DD2358-HPC25/tree/master/04_parallel/exercise1#the-workers-panel}{link}) shows us information about CPU usage and memory usage for each worker. Here, we can see that the workers seem to be busy (at almost 100\% CPU capacity) most of the time, which indicates that Dask Scheduler did a \textbf{reasonably good} job of allocating jobs to the workers in this run. Most of the work seems to be done during the \verb|from_delayed| computation, as the blue rectangles seem to refer to a \verb|from-value| call, which we assume to be that method. 
+
+Below, we also attach a screenshot of the \textbf{Task Stream} Panel during a 5-simulation run, where we can see the task distribution across the 10 threads more easily. In this run, it seems that 3 threads had a minimal amount of work to do, as there are almost no rectangles allocated to them. 
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.8\textwidth]{../images/a4_ex1_dask_task_stream.png}
+  \caption{Task Stream for 5 Simulations}
+\end{figure}
+
+\subsection*{Note: Correctness Verification of Parallel Approaches}
+The \verb|wildfire_test.py| file contains some parameterized-tests that ensure that the averages returned for certain number of simulations by the \verb|multiprocessing| and \verb|Dask| parallelization techniques match the output returned by the \verb|serial| technique. We use seeding to ensure reproducability of the results. All these tests pass.
+
+\subsection{Performance Comparison \& Questions}
+
+\subsubsection{Performance Comparison}
+The plot below shows the execution time of the 3 implementations for different number of simulations. 
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.6\textwidth]{../images/a4_ex1_runtime_comparison.png}
+  \caption{Execution Time Comparison of the 3 Approaches}
+\end{figure}
+
+Below you can see the textual output visualized in the plot above:
+
+\begin{lstlisting}[language=bash,basicstyle=\tiny\ttfamily]
+$ sudo python3 wildfire_profile.py
+PROFILING COMPUTATION FOR serial IMPLEMENTATION (runs=3)
+Avg Time for 1 simulations: 3.445551611002884 s 
+Avg Time for 2 simulations: 6.9186229303353075 s 
+Avg Time for 4 simulations: 8.648581541667227 s 
+Avg Time for 8 simulations: 22.92307461099699 s 
+Avg Time for 16 simulations: 49.92087736133059 s 
+PROFILING COMPUTATION FOR multiprocessing IMPLEMENTATION (runs=3)
+Avg Time for 1 simulations: 3.9312227636692114 s 
+Avg Time for 2 simulations: 4.07437822233381 s 
+Avg Time for 4 simulations: 4.142661333661333 s 
+Avg Time for 8 simulations: 4.285970041664162 s 
+Avg Time for 16 simulations: 7.470850749998742 s 
+PROFILING COMPUTATION FOR dask IMPLEMENTATION (runs=3)
+Avg Time for 1 simulations: 3.5319369026692584 s 
+Avg Time for 2 simulations: 3.5974722913330575 s 
+Avg Time for 4 simulations: 3.5950862220003423 s 
+Avg Time for 8 simulations: 3.6969253473265176 s 
+Avg Time for 16 simulations: 6.064963166335171 s 
+\end{lstlisting}
+
+For Dask, we used \textbf{as many workers as number of simulations (1 thread per worker)}. The code for this can be found in the \verb|wildfire_profile.py| file. \textit{Note: On the laptop with specifications defined above, we had to increase the \textbf{ulimit} on the command line to get 16 workers in this and any profiling that follows. Without this, we got \textbf{Too Many Files Open} exceptions, similar to this SO thread: \href{https://stackoverflow.com/questions/18280612/ioerror-errno-24-too-many-open-files}{link}}. 
+
+The number of simulations are powers of 2 in the range of $1\dots16$. From the figure, it is clear that \textbf{both parallel approaches outperform the serial approach}. For 1 simulation, the serial approach is slightly better. This makes sense to us, as the cost of setting up the \verb|multiprocessing|/Dask overhead would make it difficult to see any performance gain for a single simulation. However, as we increase the number of simulations, the serial approach can only execute 1 independent simulation at a time, while \verb|multiprocessing| and Dask then seem to gain advantage of multipple parallel executions. 
+
+Overall, \textbf{Dask seems to outperform the other approaches}. Note that for both the parallel approaches, the runtime seems to be unchanged up until 8 simulations. However, as soon as we jump to 16 simulations, there is a noticeable increase in the runtime. We believe that this can be attributed to the fact that we are trying to run \textbf{more parallel jobs than cores available} on the machine. As mentioned above, the setup has 10 cores. Thus, running 16 simulations in parallel using 16 processes or workers is impossible. Thus, there seems to be some contention to run on the 10 cores available, which likely explains the pattern observed here.
+
+\subsubsection{Which version is the fastest?}
+As examined above, the \textbf{Dask approach} seems to be the fastest.
+
+\subsubsection{How well does Dask scale with different number of workers?}
+We compared the running time for running 8 and 16 simulations as the number of workers increase from $2 \rightarrow 4 \rightarrow 8 \rightarrow 16$ (with 1 thread per worker). The code for this can be found in the \verb|worker_profile.py| file. On doing so, we obtained the following plot
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.6\textwidth]{../images/a4_ex1_worker_comparison.png}
+  \caption{Impact of \#Workers on Dask Parallel Simulations}
+\end{figure}
+
+Below you can see the textual output that is being visualized in the plot above:
+\begin{lstlisting}[language=bash,basicstyle=\tiny\ttfamily]
+$ python3 worker_profile.py
+PROFILING COMPUTATION FOR DASK IMPLEMENTATION (runs=3, workers=2)
+Avg Time for 8 simulations: 13.164127069331395 s 
+Avg Time for 16 simulations: 25.36850654166483 s 
+PROFILING COMPUTATION FOR DASK IMPLEMENTATION (runs=3, workers=4)
+Avg Time for 8 simulations: 7.221452972332675 s 
+Avg Time for 16 simulations: 14.417073847662929 s 
+PROFILING COMPUTATION FOR DASK IMPLEMENTATION (runs=3, workers=8)
+Avg Time for 8 simulations: 3.7034622503318437 s 
+Avg Time for 16 simulations: 7.384757389004032 s 
+PROFILING COMPUTATION FOR DASK IMPLEMENTATION (runs=3, workers=16)
+Avg Time for 8 simulations: 3.7125208473347207 s 
+Avg Time for 16 simulations: 6.11314287466909 s
+\end{lstlisting}
+
+In general, the pattern seems to be that an \textbf{increase in the number of workers reduces the running time}. This is in line with our expectations. On the plot, it is interesting to see that there is a sharp decline in the runtime up until 8 workers -- likely because all 8 workers can work in parallel on the 10 available cores. However, the rate at which the runtime declines for 16 workers is not as steep. 
+
+For 8 simulations, this could be because increasing the number of workers beyond the number of parallel simulations would just mean that some workers end up doing nothing, and so it has minimal effect. However, for the 16 simulations case, this could point to the limitations in the amount of parallelism that can be achieved when we have more workers than available cores. Even then, there does seem to be a slight decline in runtime for the 16 workers -- 16 simulations combination. 
+
+So, increasing workers (assuming they all have 1 thread) seems to be one easy way of improving performance for Dask, and thus Dask seems to \textbf{scale well} with the number of workers. 
+
+\subsubsection{How does chunk size affect performance?}
+To examine the impact of chunk size in the computation of the average on the final dask-array for the 60 days across simulations, we \textbf{varied the number of days} that are allocated to each chunk when computing the averages. The chunk sizes varied from $10 \rightarrow 20 \rightarrow 30 \rightarrow 60$ days. We ran a constant 8 simulations with this setup, using the default configuration of \verb|Client| on our machine, with \textbf{\underline{5 workers and 2 threads per worker}}. The code for this can be found in the \verb|chunk_profile.py| file. 
+
+With this setup, we obtained the following plot of the runtime when varying the chunk-sizes: 
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.6\textwidth]{../images/a4_ex1_chunks.png}
+  \caption{Impact of Chunk Sizes on Dask Parallel Simulations}
+\end{figure}
+
+Below you can see the textual output that is being visualized in the plot above:
+\begin{lstlisting}[language=bash,basicstyle=\tiny\ttfamily]
+$ python3 chunk_profile.py
+PROFILING COMPUTATION FOR DASK IMPLEMENTATION (runs=3, chunk_columns=10)
+Avg Time for 8 simulations: 7.120227680667692 s 
+PROFILING COMPUTATION FOR DASK IMPLEMENTATION (runs=3, chunk_columns=20)
+Avg Time for 8 simulations: 7.124035903000428 s 
+PROFILING COMPUTATION FOR DASK IMPLEMENTATION (runs=3, chunk_columns=30)
+Avg Time for 8 simulations: 7.120728333335137 s 
+PROFILING COMPUTATION FOR DASK IMPLEMENTATION (runs=3, chunk_columns=60)
+Avg Time for 8 simulations: 7.04620731966376 s
+\end{lstlisting}
+
+In all cases, the chunk size has \textbf{\underline{minimal impact}} on the runtime of the Dask implementation. All these runtimes are incredibly similar, with the fastest one being when we have 1 chunk (ie, when \verb|chunk_columns=60|). Even then, the runtime seems close enough to the other cases for it to not be of high significance. This is similar to our expectations -- as we feel that the final Dask array we are working with (with 8 simulations) to not be big enough to have any noticeable performance improvements with chunking. 
+
+We believe that we will start seeing noticeable differences when it comes to chunking when the final array over which the average is computed gets big enough such that chunk-size determines whether or not that array is able to fit in to the processor cache. However, up until 128 simulations (which would give us a $128 \times 60$ result grid over which the average is computed), the chunk size did not seem to impact runtime on our setup. 
+
+Thus, we believe that \textbf{chunk size has minimal impact on execution time} up to atleast 100 simulations being run in parallel using Dask on our setup
+
+\subsection{VTK Visualization of the Grid}
 
 \section{Bonus: Ocean Circulation with Dask}
 The code and associated files for the bonus section can be found under the \verb|bonus/| directory of the repository, here: \url{https://github.com/paulmyr/DD2358-HPC25/tree/master/04_parallel/bonus}. The original code provided to us can be found in the \verb|ocean_deafult.py| file -- with some augmentation to help with profiling and testing against the Dask implementation. The observations made, including the screenshots and video recordings, were obtained on a 2021 M1 MacBook Pro (16 inch), the specifications for which can be found \href{https://support.apple.com/en-us/111901}{here}.

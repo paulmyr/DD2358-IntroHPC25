@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import pyvtk 
 import random
 
 # Constants
@@ -38,13 +39,30 @@ def get_neighbors(x, y):
             neighbors.append((nx, ny))
     return neighbors
 
+def save_to_vtk(filename, forest):
+    """
+    Save the forest data to VTK files
+    """
+    forest_np = np.array(forest)
+    nx, ny = forest_np.shape
 
-def simulate_wildfire(seed=None, continuous_plot=False):
+    vtk_data = pyvtk.VtkData(
+        pyvtk.StructuredPoints([nx, ny, 1]),
+        pyvtk.PointData(
+            pyvtk.Scalars(forest_np, name="forest_status") # The status of the forest is a scalar field
+        )
+    )
+    vtk_data.tofile(filename)
+    print(f"Saved VTK File: {filename}")
+
+
+def simulate_wildfire(seed=None, continuous_plot=False, save_to_vtk=False):
     """Simulates wildfire spread over time."""
     custom_rand = random.Random(seed)
     forest, burn_time = initialize_forest(custom_rand)
 
     fire_spread = []  # Track number of burning trees each day
+    output_count=1 # The VTK file output count
 
     for day in range(DAYS):
         new_forest = forest.copy()
@@ -72,6 +90,11 @@ def simulate_wildfire(seed=None, continuous_plot=False):
                 fire_spread += [0 for _ in range(DAYS - 1 - day)]
             break
 
+        if save_to_vtk and ((day % 5 == 0 or day == DAYS - 1)):
+            vtk_filename = f"vtk/frame_{output_count:03d}.vtk"
+            save_to_vtk(vtk_filename, forest)
+            output_count += 1
+
         # Plot grid every 5 days
         if continuous_plot and (day % 5 == 0 or day == DAYS - 1):
             plt.figure(figsize=(6, 6))
@@ -81,6 +104,15 @@ def simulate_wildfire(seed=None, continuous_plot=False):
             plt.show()
 
     return fire_spread
+
+
+def run_and_save_vtk():
+    """
+    Run a SINGLE simulation, saving the forest output periodically to vtk files
+    """
+    # We don't care about the result returned here
+    simulate_wildfire(seed=1, save_to_vtk=True)
+    
 
 
 def run_n_simulations_default(n_simulations=1, seeds=None, no_print=False, show_line_plot=False):
@@ -114,12 +146,15 @@ def run_n_simulations_default(n_simulations=1, seeds=None, no_print=False, show_
 
 if __name__ == "__main__":
     # Run Multiple Simulations Serially
-    fire_spread_over_time = run_n_simulations_default(n_simulations=5, seeds=[i for i in range(5)], show_line_plot=True)
+    # fire_spread_over_time = run_n_simulations_default(n_simulations=5, seeds=[i for i in range(5)], show_line_plot=True)
 
-    # Plot results
-    plt.plot(range(len(fire_spread_over_time)), fire_spread_over_time, label="Burning Trees")
-    plt.xlabel("Days")
-    plt.ylabel("Number of Burning Trees")
-    plt.title("Wildfire Spread Over Time [Serial]")
-    plt.legend()
-    plt.show()
+    # # Plot results
+    # plt.plot(range(len(fire_spread_over_time)), fire_spread_over_time, label="Burning Trees")
+    # plt.xlabel("Days")
+    # plt.ylabel("Number of Burning Trees")
+    # plt.title("Wildfire Spread Over Time [Serial]")
+    # plt.legend()
+    # plt.show()
+
+    # Uncomment this to save to VTK files
+    run_and_save_vtk()
