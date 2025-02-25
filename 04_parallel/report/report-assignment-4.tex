@@ -582,6 +582,69 @@ To understand this observation, we looked at what the meaining of the different 
 \end{itemize}
 
 \subsubsection{VTK Files and Paraview}
+The code in the \verb|ocean_default.py| file (the serial implementation) allows for saving the data of the ocean temperature and current velocity (the $x-$ and $y-$ directions) to vtk files every few time-steps. Refer to function \verb|save_to_vtk| in this file to see how we create and save the vtk files. For visualization purposes, the total \verb|TIME_STEPS| was increased from 100 to 1000 (it is back to 100 now). As with Exercise 1, only the serial implementation's data was saved to VTK files, which are present under the \verb|vtk/| subdirectory of the \verb|bonus/| directory for this assignment.
+
+The entire animation for both the temperature (\href{https://github.com/paulmyr/DD2358-HPC25/blob/master/04_parallel/bonus/README.md#temperature-visualization}{link}) and the velocity (\href{https://github.com/paulmyr/DD2358-HPC25/blob/master/04_parallel/bonus/README.md#velocity-visualization}{link}) can be found in the \verb|README.md| for the \verb|bonus/| subdirectory of this assignment. Here, we provide 5 screenshots for both visualizations, taken at an interval of 25 times steps.
+
+ \begin{figure}
+\centering
+\begin{subfigure}{0.4\textwidth}
+    \includegraphics[width=\textwidth]{../images/vtk/bonus/temp/step_0.png}
+    \caption{Step 0}
+\end{subfigure}
+\hfill
+\begin{subfigure}{0.4\textwidth}
+    \includegraphics[width=\textwidth]{../images/vtk/bonus/temp/step_25.png}
+    \caption{Step 25}
+\end{subfigure}
+\hfill
+\begin{subfigure}{0.4\textwidth}
+    \includegraphics[width=\textwidth]{../images/vtk/bonus/temp/step_50.png}
+    \caption{Step 50}
+\end{subfigure}
+\hfill
+\begin{subfigure}{0.4\textwidth}
+    \includegraphics[width=\textwidth]{../images/vtk/bonus/temp/step_75.png}
+    \caption{Step 75}
+\end{subfigure}
+
+\begin{subfigure}{0.4\textwidth}
+    \includegraphics[width=\textwidth]{../images/vtk/bonus/temp/step_100.png}
+    \caption{Step 100}
+\end{subfigure}
+        
+\caption{Screenshots from Paraview Ocean Temperature Visualization}
+\end{figure}
+
+\begin{figure}
+\centering
+\begin{subfigure}{0.4\textwidth}
+    \includegraphics[width=\textwidth]{../images/vtk/bonus/velocity/step_0.png}
+    \caption{Step 0}
+\end{subfigure}
+\hfill
+\begin{subfigure}{0.4\textwidth}
+    \includegraphics[width=\textwidth]{../images/vtk/bonus/velocity/step_25.png}
+    \caption{Step 25}
+\end{subfigure}
+\hfill
+\begin{subfigure}{0.4\textwidth}
+    \includegraphics[width=\textwidth]{../images/vtk/bonus/velocity/step_50.png}
+    \caption{Step 50}
+\end{subfigure}
+\hfill
+\begin{subfigure}{0.4\textwidth}
+    \includegraphics[width=\textwidth]{../images/vtk/bonus/velocity/step_75.png}
+    \caption{Step 75}
+\end{subfigure}
+
+\begin{subfigure}{0.4\textwidth}
+    \includegraphics[width=\textwidth]{../images/vtk/bonus/velocity/step_100.png}
+    \caption{Step 100}
+\end{subfigure}
+        
+\caption{Screenshots from Paraview Ocean Current Velocity Visualization}
+\end{figure}
 
 
 % content end
