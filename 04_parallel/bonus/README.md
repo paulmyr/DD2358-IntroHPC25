@@ -1,6 +1,8 @@
-# Dask Dashboard Data
+# Dask Dashboard Data & VTK Visualizations
 Here, we present video recordings for observations of our Dask Dashboard that we spoke about in the report. The aim of these recordings here is to provide more context for our conclusions drawn 
 in the report, so that the reader can see the evolution of parameters (such as worker memory usage, job status, etc) for themselves.
+
+We also present a video of the VTK Visualization in Paraview that shows the ocean temperature and velocity changes over time for a simulation. This was done on the serial implementation on one seeded simulation (refer to report for more).
 
 ## Worker Memory and CPU Usage (for Different Chunk Sizes)
 Below, we provide video recordings of the `Worker` tab of the Dask Dashboard. Of partcicular interest to us, according to the assignment handout, were the **CPU Usage** and the **Memory Usage**
@@ -45,4 +47,21 @@ https://github.com/user-attachments/assets/3b9c62da-c1b2-4559-b9f4-63c3da3f86f1
 https://github.com/user-attachments/assets/5878516b-7339-44d7-9359-c0cd72bc5c5e
 
 
+
+## VTK Visualizations
+Below we show videos of the changes in the ocean currents **temperature** and **velocity** over time. This was obtained from the serial implementation. Refer to the `ocean_default.py` file for more. For the purpose of this visualization, the number of days for which the simulation runs was increased from 100 to 1000.
+
+### Temperature Visualization
+
+
+
+https://github.com/user-attachments/assets/725b6eef-451a-4084-a1db-8283343204d4
+
+
+
+### Velocity Visualization
+
+
+
+https://github.com/user-attachments/assets/b4e4dd18-e1a2-469a-8229-baa562bd559d
 
