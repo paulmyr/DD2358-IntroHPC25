@@ -39,7 +39,7 @@ def get_neighbors(x, y):
             neighbors.append((nx, ny))
     return neighbors
 
-def save_to_vtk(filename, forest):
+def save_data_to_vtk(filename, forest):
     """
     Save the forest data to VTK files
     """
@@ -47,9 +47,9 @@ def save_to_vtk(filename, forest):
     nx, ny = forest_np.shape
 
     vtk_data = pyvtk.VtkData(
-        pyvtk.StructuredPoints([nx, ny, 1]),
+        pyvtk.StructuredPoints([nx, ny]),
         pyvtk.PointData(
-            pyvtk.Scalars(forest_np, name="forest_status") # The status of the forest is a scalar field
+            pyvtk.Scalars(forest_np.flatten(), name="forest_status") # The status of the forest is a scalar field
         )
     )
     vtk_data.tofile(filename)
@@ -92,7 +92,7 @@ def simulate_wildfire(seed=None, continuous_plot=False, save_to_vtk=False):
 
         if save_to_vtk and ((day % 5 == 0 or day == DAYS - 1)):
             vtk_filename = f"vtk/frame_{output_count:03d}.vtk"
-            save_to_vtk(vtk_filename, forest)
+            save_data_to_vtk(vtk_filename, forest)
             output_count += 1
 
         # Plot grid every 5 days
@@ -111,6 +111,7 @@ def run_and_save_vtk():
     Run a SINGLE simulation, saving the forest output periodically to vtk files
     """
     # We don't care about the result returned here
+    # For the VTK files present in the repository, number of days was changed to 500.
     simulate_wildfire(seed=1, save_to_vtk=True)
     
 
