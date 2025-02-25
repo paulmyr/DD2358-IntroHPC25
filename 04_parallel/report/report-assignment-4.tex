@@ -369,6 +369,42 @@ We believe that we will start seeing noticeable differences when it comes to chu
 Thus, we believe that \textbf{chunk size has minimal impact on execution time} up to atleast 100 simulations being run in parallel using Dask on our setup
 
 \subsection{VTK Visualization of the Grid}
+The code in \verb|wildfiremontecarloserial.py| file was augmented to allow for saving the state of the \verb|forest| to vtk file every few time-steps. The function \verb|save_data_to_vtk| is responsible for creating and saving this VTK data. To get a more comprehensive visualization, the \verb|DAYS| parameter in the file was changed to 500 from 60 (it has been changed back afterwards). Note that only the data obtained from the serial implementation was saved to VTK in this way, as was clarified in the Canvas discussion (\href{https://canvas.kth.se/courses/52247/discussion_topics/453192}{link}). The VTK files so generated can be found under the \verb|vtk/| subdirectory of the \verb|exercise1/| directory for this assignment.
+
+You can find the entire animation from Paraview in the \verb|README.md| for this subdirectory in the repo, at this location: \href{https://github.com/paulmyr/DD2358-HPC25/blob/master/04_parallel/exercise1/README.md#the-vtk-visualization-on-paraview}{link}.
+
+Here, we attach 5 screenshots from the animation, taken at an interval of 25 time steps (including the first and last frame).
+
+\begin{figure}
+\centering
+\begin{subfigure}{0.4\textwidth}
+    \includegraphics[width=\textwidth]{../images/vtk/ex1/step_0.png}
+    \caption{Step 0}
+\end{subfigure}
+\hfill
+\begin{subfigure}{0.4\textwidth}
+    \includegraphics[width=\textwidth]{../images/vtk/ex1/step_25.png}
+    \caption{Step 25}
+\end{subfigure}
+\hfill
+\begin{subfigure}{0.4\textwidth}
+    \includegraphics[width=\textwidth]{../images/vtk/ex1/step_50.png}
+    \caption{Step 50}
+\end{subfigure}
+\hfill
+\begin{subfigure}{0.4\textwidth}
+    \includegraphics[width=\textwidth]{../images/vtk/ex1/step_75.png}
+    \caption{Step 75}
+\end{subfigure}
+
+\begin{subfigure}{0.4\textwidth}
+    \includegraphics[width=\textwidth]{../images/vtk/ex1/step_100.png}
+    \caption{Step 100}
+\end{subfigure}
+        
+\caption{Screenshots from Paraview Forest Fire Visualization}
+\end{figure}
+
 
 \section{Bonus: Ocean Circulation with Dask}
 The code and associated files for the bonus section can be found under the \verb|bonus/| directory of the repository, here: \url{https://github.com/paulmyr/DD2358-HPC25/tree/master/04_parallel/bonus}. The original code provided to us can be found in the \verb|ocean_deafult.py| file -- with some augmentation to help with profiling and testing against the Dask implementation. The observations made, including the screenshots and video recordings, were obtained on a 2021 M1 MacBook Pro (16 inch), the specifications for which can be found \href{https://support.apple.com/en-us/111901}{here}.

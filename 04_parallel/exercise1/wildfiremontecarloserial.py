@@ -147,15 +147,15 @@ def run_n_simulations_default(n_simulations=1, seeds=None, no_print=False, show_
 
 if __name__ == "__main__":
     # Run Multiple Simulations Serially
-    # fire_spread_over_time = run_n_simulations_default(n_simulations=5, seeds=[i for i in range(5)], show_line_plot=True)
+    fire_spread_over_time = run_n_simulations_default(n_simulations=5, seeds=[i for i in range(5)], show_line_plot=True)
 
-    # # Plot results
-    # plt.plot(range(len(fire_spread_over_time)), fire_spread_over_time, label="Burning Trees")
-    # plt.xlabel("Days")
-    # plt.ylabel("Number of Burning Trees")
-    # plt.title("Wildfire Spread Over Time [Serial]")
-    # plt.legend()
-    # plt.show()
+    # Plot results
+    plt.plot(range(len(fire_spread_over_time)), fire_spread_over_time, label="Burning Trees")
+    plt.xlabel("Days")
+    plt.ylabel("Number of Burning Trees")
+    plt.title("Wildfire Spread Over Time [Serial]")
+    plt.legend()
+    plt.show()
 
-    # Uncomment this to save to VTK files
-    run_and_save_vtk()
+    # # Uncomment this to save to VTK files
+    # run_and_save_vtk()
