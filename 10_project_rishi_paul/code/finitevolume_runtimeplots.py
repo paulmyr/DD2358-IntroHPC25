@@ -1,9 +1,9 @@
+import argparse
+
 import matplotlib.pyplot as plt
 import numpy as np
 
 from timeit import default_timer as timer
-
-
 
 """
 Create Your Own Finite Volume Fluid Simulation (With Python)
@@ -312,8 +312,8 @@ def timed(f, *args, **kwargs):
     return t1 - t0
 
 
-def run_function_as_experiment(f, num_runs=5, tEnd=2):
-    grid_sizes = [2 ** i for i in range(4, 8)]
+def run_function_as_experiment(f, lbound, ubound, num_runs, tEnd):
+    grid_sizes = [2 ** i for i in range(lbound, ubound)]
     wtimes = np.zeros(len(grid_sizes))
     for i, grid_size in enumerate(grid_sizes):
         for _ in range(num_runs):
@@ -327,15 +327,48 @@ def run_function_as_experiment(f, num_runs=5, tEnd=2):
     # plt.plot(grid_sizes, wtimes, label=f"{f.__name__} (m1 (16') macbook pro, 2021)", marker='o')
     plt.plot(grid_sizes, wtimes, label=f"{f.__name__} (Apple MacBook M1 Air, 2020)", marker='o')
 
+    for i,j in zip(grid_sizes, wtimes):
+        plt.annotate("%.3f s" % j, xy=(i,j), xytext=(5,-10), textcoords="offset points")
+
 
 if __name__== "__main__":
-    # main
-    run_function_as_experiment(main)
+    # Initialize parser
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-l", "--lbound", help = "lower bound for N in power of two (default: 4)")
+    parser.add_argument("-u", "--ubound", help = "upper bound for N in power of two (default: 12)")
+    parser.add_argument("-n", "--nruns", help = "nubmer of runs per grid size (default: 3)")
+    parser.add_argument("-t", "--tend", help = "number of seconds simulation should run (default: 2)")
 
-    plt.yscale("log")
-    plt.xscale("log")
-    plt.xlabel("N")
-    plt.ylabel("wtime")
+    _args = parser.parse_args()
+
+    if not _args.lbound:
+        _args.lbound = 4
+    else:
+        _args.lbound = int(_args.lbound)
+    
+    if not _args.ubound:
+        _args.ubound = 8 # (range goes up to 12-1 therefore 11
+    else:
+        _args.ubound = int(_args.ubound) + 1
+        
+    if not _args.nruns:
+        _args.nruns = 3
+    else:
+        _args.nruns = int(_args.nruns)
+
+    if not _args.tend:
+        _args.tend = 2
+    else:
+        _args.tend = int(_args.tend)
+
+    # main
+    run_function_as_experiment(main, _args.lbound, _args.ubound, _args.nruns, _args.tend)
+
+    plt.xscale("log", base=2)
+    plt.xlabel("N (gridsize: 2**N x 2**N)")
+    
+    plt.yscale("log", base=10)
+    plt.ylabel("wtime (in s)")
     plt.legend()
 
     plt.show()
