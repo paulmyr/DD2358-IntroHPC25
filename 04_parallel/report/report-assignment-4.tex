@@ -1,4 +1,3 @@
-
 \documentclass[a4paper,12pt]{article}
 \usepackage[utf8]{inputenc}
 \usepackage[a4paper,
@@ -180,7 +179,6 @@
 \begin{document}
 \maketitle
 \thispagestyle{firstpagestyle}
-\listoftodos
 
 \tableofcontents
 \vspace{1em}
@@ -411,7 +409,7 @@ We first converted all the grids used in the ocean updates from \verb|numpy| arr
 For clarity: we created two separate \verb|update| functions for the changes to the velocity and temperature grids.
 We passed in these functions as the first argument to \verb|map_overlap|.
 This was followed by the arguments of the \verb|update| functions.
-The \verb|depth| argument of the \verb|map_overlap| function was set to 1, since that is all that was required in the overalpping computation performed by the laplacian calculation through the \verb|np.roll| operation.\todo[]{Not sure this is clear to me}
+The \verb|depth| argument of the \verb|map_overlap| function was set to 1, since that is all that was required in the overalpping computation performed by the laplacian calculation through the \verb|np.roll| operation.
 Lastly, \verb|boundary| was set to be \verb|periodic|.
 It gives the intended output when compared with the default serial implementation.
 
@@ -575,7 +573,7 @@ Dask therefore does not increase the memory overhead notably by increasing the n
 We had a discussion about the Task Stream and Workers panel in the $100 \times 100$ chunk-size case in the previous section, so we refrain from repeating that here. Please refer to the previous section for our analysis.
 
 \item \textbf{\underline{$200 \times 200$ Chunk Size}} \\
-  When working with a chunk-size of $200 \times 200$, there is only one chunk \todo{one chunk per worker?} to work with, and 5 workers (10 threads).
+  When working with a chunk-size of $200 \times 200$, there is only one chunk to work with, and 5 workers (10 threads).
   We expected inter-worker communication to be \textbf{minimal} and resulting in \textbf{(very) few red rectangles} in the Task Stream graph; which is exactly what we observed.
   This contributes to the fact that a chunk size of $200 \times 200$ being the quickest simulation amongst the different chunk-size configurations we tried.
 
@@ -585,11 +583,18 @@ We had a discussion about the Task Stream and Workers panel in the $100 \times 1
   \caption{Task Stream For Ocean Simulation Using Chunk Size $200 \times 200$}
 \end{figure}
 
-Of note here is that we only see 4 threads (or 2 workers) in the Task Stream visualization for a computation with $200 \times 200$ chunk size. Based on the Dask Documentation, we believe this indicates that Dask only uses 2 workers\todo{2 workers or 2 threads? I think two threads does make sense, because it is shared memory, however 2 workes would not make much sense to me...} from amongst the 5 available to perform this computation. This makes sense to us \todo{does it?} -- since there is only 1 chunk to be distributed amongst 5 workers, there is a limit to how much work can be done in parallel. Of these 2 workers as well, only one of them seems to be the one doing the majority of the computation, while the other worker seems to be only minimally involved near the beginning of the first and second \textit{computation bursts} (like the other 2 chunk-size cases, the familiar \textit{computation bursts} also make an appearance here). So to us, this seems like a waste of resources, as 3 of out 5 workers are completely idle, while 2 workers (and among them, 1 worker) does a bulk of the computation. This still seems to peform the best out of the 3 chunk-sizes we tried in terms of completion time -- which again indicates to us that this form of parallelization on a shared-memory architecture is not ideal because of the overhead involved. 
+Of note here is that we only see four threads (or 2 workers) in the Task Stream visualization for a computation with $200 \times 200$ chunk size. Based on the Dask Documentation, we believe this indicates that Dask only uses these four threads (out of 10) to perform this computation.
+This behaviour is to be expected.
+Due to only one chunk beeing distributed amongst five workers, the heavy computational work cannot be done in parallel.
+While two workers are working on the computation (see \href{https://github.com/paulmyr/DD2358-HPC25/tree/master/04_parallel/bonus#chunk-size-200}{link}) only one worker has any significant cpu load.
+We assume the other worker is tasked with overhead duty.
+Still, this performs best out of the three scenarios we tested.
+This again indicates that this form of parallelization on a shared-memory architecture is suboptimal.
 
-We see a similar story being told in the evoluation of the information in the \textbf{Workers} panel for a computation with a chunk-size of $200 \times 200$. A video recording similar to the other 2 cases can be found here in the repo: \href{https://github.com/paulmyr/DD2358-HPC25/tree/master/04_parallel/bonus#chunk-size-200}{link}.
-As can be seen in the video, once the computation starts, workers 0 - 2 are idle.
-Worker 3 performs the bulk of the computation (evident from its CPU Usage percentage over the course of the computation), while Worker 4 is minimally involved (evident from a slight increase in its CPU Usage percentage for a short time in a couple of instances).
+A similar story is being told in the evaluation of the information provided within the \textbf{Workers} panel.
+For a computation with a chunk-size of $200 \times 200$ you may find a recording of the output here: \href{https://github.com/paulmyr/DD2358-HPC25/tree/master/04_parallel/bonus#chunk-size-200}{link}.
+As can be seen in the video, once the computation starts, workers 0 - 2 and 4 are idle.
+Worker 3 performs the computation, which is evident from its CPU Usage percentage over the course of the computation.
 
 \item \textbf{\underline{Conclusion}}\\
   In conclusion, on varying the chunk sizes while keeping the number of iterations and workers the same in the aforementioned setup, we observe that a \textbf{decrease in chunk size} leads to an \textbf{increase in inter-worker communication}
@@ -599,14 +604,15 @@ Worker 3 performs the bulk of the computation (evident from its CPU Usage percen
   In turn this results in some workers being idle.
   This is no short-coming of the Dask Scheduler -- it seems to perform reasonably well at ensuring all workers having similar work loads, given \underline{enough chunks are available}.
   Also, Dask seems to prefer picking the same worker across different \textit{bursts} of computation.
-  This may have something to do with cache coherency. \todo{fact check this?}
-  So, a small way in which Dask Scheduler could improve the \textit{distribution of the load} of the computation across workers would be to potentially pick different workers in between these bursts \todo{I don't think this is actually a smart idea. This would potentially mean stroing all cache values to memory, moving to a different core and restoring everything --- tough I'm not sure if this is the reason dask does dask things the way dask does dask things lol} to do perform the computations (assuming the bursts are independent of each other and do not require data from previous bursts). However, we remain unsure if this would lead to any noticable advantages on a shared-memory architecutre like our personal laptops.
+  This may be reletated to enforcing cache coherency.
+  We also \textbf{did not observe} any noticable differences in \textbf{memory load or consumption} when varying chunk-sizes.
+  Each worker seemed to use somewhat the same amount of memory, no matter the chunk size.
+  We may contribute this to the fact, that the acutal memory needed for the computation is actually outweighed by the Dask worker memory overhead.
+  Because the size of the entire grid being comparatively small (at a constant $200 \times 200$), we would need to greatly increase the grid size to make sure each worker does not run out of memory.
 
-We also \textbf{did not observe any noticable differences in memory load/consumption} when varying chunk-sizes, which we feel could potentially be attributed to the large amount of memory available to each worker \todo{what does it have to do with available memory? I think the explenation is simpler: dask does not add any notable memory overhead, no?}, and the size of the entire grid being comparatively small (at a constant $200 \times 200$)\todo{what does that have to do with it?}.
-
-To put it in a nutshell, we believe that this profiling illustrates how \textbf{managing chunks amongst different workers} is potentially a \textbf{significant contributor to increased runtime} when using Dask-Array parallelization as opposed to the serial numpy implementation on shared-memory architectures.
-It outweighs the benefits of parallelization and appears to be \textbf{suboptimal in regards to improving performance} given our setup.
-Our conclusion might change revisiting this implementation on a distributed architecture. 
+  To put it in a nutshell, we believe that this profiling illustrates how \textbf{managing chunks amongst different workers} is potentially a \textbf{significant contributor to increased runtime} when using Dask-Array parallelization as opposed to the serial numpy implementation on shared-memory architectures.
+  It outweighs the benefits of parallelization and appears to be \textbf{suboptimal in regards to improving performance} given our setup.
+  Our conclusion might change revisiting this implementation on a distributed architecture. 
 \end{itemize}
 
 \subsubsection{Miscellenaeous Questions}
@@ -616,10 +622,16 @@ Based on our observations and thorough discussion above, we now answer some misc
 \item \textbf{\underline{How well-balanced were the worker loads?}}\\
   It depends on the chunk size: small chunk sizes improved balancing at the cost of communication and vice versa.
 
-To us, this seems logical, and we do not think that the Dask Scheduler is to be blamed for this. As a minor improvement/alternative, however, one could say that the Dask Scheduler could attempt to "distribute" the smaller number of chunks more democratically across workers. For example, in the $200 \times 200$ case, we saw that only one worker \textbf{throughout the computation} did a bulk of the job. One alternative of this could be to try and have other workers involved as well -- for instance, Worker 0 could do the computation during the first \textit{burst}, Worker 2 could take-over in the second \textit{burst}, etc.\todo{I don't think this is possible. It can only be one worker at a time working on this data (on two threads). The others don't have access to the shared memory... I think?} One downside of this is that if there are dependencies in the computation between bursts, then this could lead to more memory I/O between workers in a more general setting, which might explain why Dask prefers to keep computation on a single worker in the $200 \times 200$ scenario. Thus, overall, we feel that this is only a minor alternative approach and overall, the current Dask scheduling seems to be doing a democratic job. 
+  To us, this seems logical, and we do not think that the Dask Scheduler is to be blamed for this. As a minor improvement/alternative, however, one could say that the Dask Scheduler could attempt to "distribute" the smaller number of chunks more democratically across workers. For example, in the $200 \times 200$ case, we saw that only one worker \textbf{throughout the computation} did a bulk of the job.
+  We attributed this fact for exploiting cache coherence.
+  One alternative of this could be to try and have other workers involved as well -- for instance, Worker 0 could do the computation during the first \textit{burst}, Worker 2 could take-over in the second \textit{burst}, etc.
+  One downside of this is that if there are dependencies in the computation between bursts, then this could lead to more memory I/O between workers in a more general setting, which might explain why Dask prefers to keep computation on a single worker in the $200 \times 200$ scenario.
+  Also the computation might be run on a different CPU core, which would lead to storing and restoring all cache values from the registers.
+  Thus, overall, we feel that this might decrease performance in the case of low number of chunks.
+  The current Dask scheduling seems to be doing a democratic job for higher number of chunks.
 
 \item \textbf{\underline{Did any worker run out of memory?}}\\
-Based on our observations of the Worker panel across different chunk-sizes, \textbf{no worker} seems to run out of memory.
+  Based on our observations of the Worker panel across different chunk-sizes, \textbf{no worker} seems to run out of memory.
 
 \item \textbf{\underline{Was there idle time or task queueing?}}\\
   For all chunk-sizes, we did notice idle time between the \textit{computation bursts} that we were referring to earlier.
@@ -646,33 +658,33 @@ For visualization purposes, the total \verb|TIME_STEPS| was increased from 100 t
 As with Exercise 1, only the serial implementation's data was saved to VTK files, which are present under the \verb|vtk/| subdirectory of the \verb|bonus/| directory for this assignment.
 
 The entire animation for both the temperature (\href{https://github.com/paulmyr/DD2358-HPC25/blob/master/04_parallel/bonus/README.md#temperature-visualization}{link}) and the velocity (\href{https://github.com/paulmyr/DD2358-HPC25/blob/master/04_parallel/bonus/README.md#velocity-visualization}{link}) can be found in the \verb|README.md| for the \verb|bonus/| subdirectory of this assignment.
-Here, we provide 5 screenshots for both visualizations, taken at an interval of 25 times steps. \todo{I thought we increase the time steps from 100 to 1000? Does that mean step sizes of 250?}
+Here, we provide 5 screenshots for both visualizations, taken every 250 loop iterations.
 
  \begin{figure}
 \centering
 \begin{subfigure}{0.4\textwidth}
     \includegraphics[width=\textwidth]{../images/vtk/bonus/temp/step_0.png}
-    \caption{Step 0}
+    \caption{Time step 0}
 \end{subfigure}
 \hfill
 \begin{subfigure}{0.4\textwidth}
     \includegraphics[width=\textwidth]{../images/vtk/bonus/temp/step_25.png}
-    \caption{Step 25}
+    \caption{Time step 250}
 \end{subfigure}
 \hfill
 \begin{subfigure}{0.4\textwidth}
     \includegraphics[width=\textwidth]{../images/vtk/bonus/temp/step_50.png}
-    \caption{Step 50}
+    \caption{Time step 500}
 \end{subfigure}
 \hfill
 \begin{subfigure}{0.4\textwidth}
     \includegraphics[width=\textwidth]{../images/vtk/bonus/temp/step_75.png}
-    \caption{Step 75}
+    \caption{Time step 750}
 \end{subfigure}
 
 \begin{subfigure}{0.4\textwidth}
     \includegraphics[width=\textwidth]{../images/vtk/bonus/temp/step_100.png}
-    \caption{Step 100}
+    \caption{Time step 1000}
 \end{subfigure}
         
 \caption{Screenshots from Paraview Ocean Temperature Visualization}
@@ -682,27 +694,27 @@ Here, we provide 5 screenshots for both visualizations, taken at an interval of 
 \centering
 \begin{subfigure}{0.4\textwidth}
     \includegraphics[width=\textwidth]{../images/vtk/bonus/velocity/step_0.png}
-    \caption{Step 0}
+    \caption{Time step 0}
 \end{subfigure}
 \hfill
 \begin{subfigure}{0.4\textwidth}
     \includegraphics[width=\textwidth]{../images/vtk/bonus/velocity/step_25.png}
-    \caption{Step 25}
+    \caption{Time step 250}
 \end{subfigure}
 \hfill
 \begin{subfigure}{0.4\textwidth}
     \includegraphics[width=\textwidth]{../images/vtk/bonus/velocity/step_50.png}
-    \caption{Step 50}
+    \caption{Time step 500}
 \end{subfigure}
 \hfill
 \begin{subfigure}{0.4\textwidth}
     \includegraphics[width=\textwidth]{../images/vtk/bonus/velocity/step_75.png}
-    \caption{Step 75}
+    \caption{Time step 750}
 \end{subfigure}
 
 \begin{subfigure}{0.4\textwidth}
     \includegraphics[width=\textwidth]{../images/vtk/bonus/velocity/step_100.png}
-    \caption{Step 100}
+    \caption{Time step 1000}
 \end{subfigure}
         
 \caption{Screenshots from Paraview Ocean Current Velocity Visualization}
