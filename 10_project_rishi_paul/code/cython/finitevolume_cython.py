@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import finitevolume_cython_lib
 import numpy as np
 
 """
@@ -141,7 +142,7 @@ def applyFluxes(F, flux_F_X, flux_F_Y, dx, dt):
 
     return F
 
-@profile
+
 def getFlux(rho_L, rho_R, vx_L, vx_R, vy_L, vy_R, P_L, P_R, gamma):
     """
     Calculate fluxed between 2 states with local Lax-Friedrichs/Rusanov rule
@@ -192,12 +193,11 @@ def getFlux(rho_L, rho_R, vx_L, vx_R, vy_L, vy_R, P_L, P_R, gamma):
     return flux_Mass, flux_Momx, flux_Momy, flux_Energy
 
 
-@profile
 def main():
     """ Finite Volume simulation """
 
     # Simulation parameters
-    N                      = 2**8 # resolution
+    N                      = 512 # resolution
     boxsize                = 1.
     gamma                  = 5/3 # ideal gas gamma
     courant_fac            = 0.4
@@ -205,7 +205,7 @@ def main():
     tEnd                   = 2
     tOut                   = 0.02 # draw frequency
     useSlopeLimiting       = False
-    plotRealTime = False # switch on for plotting as the simulation goes along
+    plotRealTime = True # switch on for plotting as the simulation goes along
 
     # Mesh
     dx = boxsize / N
@@ -268,8 +268,12 @@ def main():
         P_XL,   P_XR,   P_YL,   P_YR   = extrapolateInSpaceToFace(P_prime,   P_dx,   P_dy,   dx)
 
         # compute fluxes (local Lax-Friedrichs/Rusanov)
-        flux_Mass_X, flux_Momx_X, flux_Momy_X, flux_Energy_X = getFlux(rho_XL, rho_XR, vx_XL, vx_XR, vy_XL, vy_XR, P_XL, P_XR, gamma)
-        flux_Mass_Y, flux_Momy_Y, flux_Momx_Y, flux_Energy_Y = getFlux(rho_YL, rho_YR, vy_YL, vy_YR, vx_YL, vx_YR, P_YL, P_YR, gamma)
+        # flux_Mass_X, flux_Momx_X, flux_Momy_X, flux_Energy_X = getFlux(rho_XL, rho_XR, vx_XL, vx_XR, vy_XL, vy_XR, P_XL, P_XR, gamma)
+        # flux_Mass_Y, flux_Momy_Y, flux_Momx_Y, flux_Energy_Y = getFlux(rho_YL, rho_YR, vy_YL, vy_YR, vx_YL, vx_YR, P_YL, P_YR, gamma)
+
+
+        flux_Mass_X, flux_Momx_X, flux_Momy_X, flux_Energy_X = finitevolume_cython_lib.getFluxAsArray(rho_XL, rho_XR, vx_XL, vx_XR, vy_XL, vy_XR, P_XL, P_XR, gamma)
+        flux_Mass_Y, flux_Momy_Y, flux_Momx_Y, flux_Energy_Y = finitevolume_cython_lib.getFluxAsArray(rho_YL, rho_YR, vy_YL, vy_YR, vx_YL, vx_YR, P_YL, P_YR, gamma)
 
         # update solution
         Mass   = applyFluxes(Mass, flux_Mass_X, flux_Mass_Y, dx, dt)
@@ -291,12 +295,13 @@ def main():
             ax.get_yaxis().set_visible(False)
             ax.set_aspect('equal')
             plt.pause(0.001)
+            plt.title("Cython")
             outputCount += 1
 
 
     # Save figure
-    # plt.savefig('finitevolume.png',dpi=240)
-    # plt.show()
+    plt.savefig('finitevolume.png',dpi=240)
+    plt.show()
 
     return 0
 
@@ -304,14 +309,3 @@ def main():
 
 if __name__== "__main__":
     main()
-
-    plt.plot(grid_sizes, torch_runtimes, label=f"pytorch (colab t4 gpu)", marker='o')
-    plt.plot(grid_sizes, cupy_runtimes, label=f"cupy (colab t4 gpu)", marker='o')
-
-    plt.yscale("log")
-    plt.xscale("log")
-    plt.xlabel("N")
-    plt.ylabel("wtime")
-    plt.legend()
-
-    plt.show()

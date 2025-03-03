@@ -196,7 +196,7 @@ def main():
     """ Finite Volume simulation """
 
     # Simulation parameters
-    N                      = 128 # resolution
+    N                      = 512 # resolution
     boxsize                = 1.
     gamma                  = 5/3 # ideal gas gamma
     courant_fac            = 0.4
@@ -204,7 +204,7 @@ def main():
     tEnd                   = 2
     tOut                   = 0.02 # draw frequency
     useSlopeLimiting       = False
-    plotRealTime = False # switch on for plotting as the simulation goes along
+    plotRealTime = True # switch on for plotting as the simulation goes along
 
     # Mesh
     dx = boxsize / N
@@ -290,6 +290,7 @@ def main():
             ax.get_yaxis().set_visible(False)
             ax.set_aspect('equal')
             plt.pause(0.001)
+            plt.title("Default")
             outputCount += 1
 
 
