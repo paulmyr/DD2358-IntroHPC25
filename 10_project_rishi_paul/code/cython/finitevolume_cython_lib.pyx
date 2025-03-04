@@ -339,3 +339,45 @@ def getFlux(double[:,:] rho_L, double[:,:] rho_R, double[:,:] vx_L, double[:,:] 
             flux_Energy[i, j] = ((en_star+P_star) * momx_star/rho_star) - (C * 0.5 * (en_L - en_R))
     
     return flux_Mass, flux_Momx, flux_Momy, flux_Energy
+
+
+
+
+################################################
+# USING RAW C CODE 
+################################################
+cdef extern from "flux.c":
+    void compute_flux(double* rho_L, double* rho_R, double* vx_L, double* vx_R, double* vy_L, double* vy_R, double* P_L, double* P_R, double gamma, double* flux_Mass, double* flux_Momx, double* flux_Momy, double* flux_Energy, int dim)
+
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+@cython.initializedcheck(False)
+def getFluxRawC(double[:,:] rho_L, double[:,:] rho_R, double[:,:] vx_L, double[:,:] vx_R, double[:,:] vy_L, double[:,:] vy_R, double[:,:] P_L, double[:,:] P_R, double gamma):
+    """
+    Calculate fluxed between 2 states with local Lax-Friedrichs/Rusanov rule
+    rho_L        is a matrix of left-state  density
+    rho_R        is a matrix of right-state density
+    vx_L         is a matrix of left-state  x-velocity
+    vx_R         is a matrix of right-state x-velocity
+    vy_L         is a matrix of left-state  y-velocity
+    vy_R         is a matrix of right-state y-velocity
+    P_L          is a matrix of left-state  pressure
+    P_R          is a matrix of right-state pressure
+    gamma        is the ideal gas gamma
+    flux_Mass    is the matrix of mass fluxes
+    flux_Momx    is the matrix of x-momentum fluxes
+    flux_Momy    is the matrix of y-momentum fluxes
+    flux_Energy  is the matrix of energy fluxes
+    """
+
+    cdef unsigned int N = rho_L.shape[0]
+    
+    cdef double[:,:] flux_Mass = np.zeros((N, N), dtype=np.double, order='C')
+    cdef double[:,:] flux_Momx = np.zeros((N, N), dtype=np.double, order='C')
+    cdef double[:,:] flux_Momy = np.zeros((N, N), dtype=np.double, order='C')
+    cdef double[:,:] flux_Energy = np.zeros((N, N), dtype=np.double, order='C')
+
+    compute_flux(&rho_L[0, 0], &rho_R[0, 0], &vx_L[0, 0], &vx_R[0, 0], &vy_L[0, 0], &vy_R[0, 0], &P_L[0, 0], &P_R[0, 0], gamma, &flux_Mass[0, 0], &flux_Momx[0, 0], &flux_Momy[0, 0], &flux_Energy[0, 0], N)
+    
+    return flux_Mass, flux_Momx, flux_Momy, flux_Energy

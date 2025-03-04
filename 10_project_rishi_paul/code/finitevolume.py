@@ -196,7 +196,7 @@ def main():
     """ Finite Volume simulation """
 
     # Simulation parameters
-    N                      = 512 # resolution
+    N                      = 256 # resolution
     boxsize                = 1.
     gamma                  = 5/3 # ideal gas gamma
     courant_fac            = 0.4

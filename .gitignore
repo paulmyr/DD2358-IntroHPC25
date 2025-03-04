@@ -26,3 +26,5 @@
 
 03_compgpu/exercise1/*.c
 03_compgpu/exercise1/*.so
+**/*.so
+

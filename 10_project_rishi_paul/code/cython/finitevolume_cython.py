@@ -197,7 +197,7 @@ def main():
     """ Finite Volume simulation """
 
     # Simulation parameters
-    N                      = 512 # resolution
+    N                      = 128 # resolution
     boxsize                = 1.
     gamma                  = 5/3 # ideal gas gamma
     courant_fac            = 0.4
@@ -272,8 +272,8 @@ def main():
         # flux_Mass_Y, flux_Momy_Y, flux_Momx_Y, flux_Energy_Y = getFlux(rho_YL, rho_YR, vy_YL, vy_YR, vx_YL, vx_YR, P_YL, P_YR, gamma)
 
 
-        flux_Mass_X, flux_Momx_X, flux_Momy_X, flux_Energy_X = finitevolume_cython_lib.getFluxAsArray(rho_XL, rho_XR, vx_XL, vx_XR, vy_XL, vy_XR, P_XL, P_XR, gamma)
-        flux_Mass_Y, flux_Momy_Y, flux_Momx_Y, flux_Energy_Y = finitevolume_cython_lib.getFluxAsArray(rho_YL, rho_YR, vy_YL, vy_YR, vx_YL, vx_YR, P_YL, P_YR, gamma)
+        flux_Mass_X, flux_Momx_X, flux_Momy_X, flux_Energy_X = finitevolume_cython_lib.getFluxRawC(rho_XL, rho_XR, vx_XL, vx_XR, vy_XL, vy_XR, P_XL, P_XR, gamma)
+        flux_Mass_Y, flux_Momy_Y, flux_Momx_Y, flux_Energy_Y = finitevolume_cython_lib.getFluxRawC(rho_YL, rho_YR, vy_YL, vy_YR, vx_YL, vx_YR, P_YL, P_YR, gamma)
 
         # update solution
         Mass   = applyFluxes(Mass, flux_Mass_X, flux_Mass_Y, dx, dt)
