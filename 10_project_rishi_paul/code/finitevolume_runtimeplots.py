@@ -297,7 +297,7 @@ def main(N=128, tEnd=2, plotRealTime=False):
             plt.pause(0.001)
             outputCount += 1
 
-
+        # return 0
     # Save figure
     # plt.savefig(f'result_{N}.png',dpi=240)
     # plt.show()
@@ -317,7 +317,7 @@ def run_function_as_experiment(f, lbound, ubound, num_runs, tEnd):
     wtimes = np.zeros(len(grid_sizes))
     for i, grid_size in enumerate(grid_sizes):
         for _ in range(num_runs):
-	        wtimes[i] += timed(f, N=grid_size, tEnd=tEnd)
+            wtimes[i] += timed(f, N=grid_size, tEnd=tEnd)
         wtimes /= num_runs
 
     print(f"ran {f.__name__}")
@@ -325,6 +325,7 @@ def run_function_as_experiment(f, lbound, ubound, num_runs, tEnd):
     for i, j in zip(grid_sizes, wtimes):
         print(f"Grid: ({i}, {i})\n\tavg runtime: {j}s")
     # plt.plot(grid_sizes, wtimes, label=f"{f.__name__} (m1 (16') macbook pro, 2021)", marker='o')
+    print(wtimes)
     plt.plot(grid_sizes, wtimes, label=f"{f.__name__} (Apple MacBook M1 Air, 2020)", marker='o')
 
     for i,j in zip(grid_sizes, wtimes):
@@ -359,7 +360,7 @@ if __name__== "__main__":
     if not _args.tend:
         _args.tend = 2
     else:
-        _args.tend = int(_args.tend)
+        _args.tend = float(_args.tend)
 
     # main
     run_function_as_experiment(main, _args.lbound, _args.ubound, _args.nruns, _args.tend)
