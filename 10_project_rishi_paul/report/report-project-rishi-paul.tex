@@ -8,7 +8,6 @@
             bottom=1in,
             footskip=.25in]{geometry}
 
-
 %###############################################################################
 
 %\input{~/layout/global_layout}
@@ -193,7 +192,56 @@ We mad following changes (bugfixes) before starting with the project:
 \todo[inline]{Report outline}
 \section*{Preliminary}
 \section{Introduction}
-\section{}
+The Kelvin-Helmholz-Inequality is a phenomenom that arises when two fluid layers of different velocities interface with each other.
+It results in characteristic patterns that can be observered, e.g. in clouds, the surface of the sun or in jupyters colorful atmosphere.
+Philip Mocz created an which produces a visualization of the characteristic swirls of the K-H-inequality.
+
+The Finite Volume method is a popular simulation technique to simulate fluids or partial differential equations that can be represented in a conservative form.
+This is often the case for equations that describe physical conservation laws.
+The Euler-Fluid-Equations (a simplifications of the Navier-Stokes-Equations) can be represented nebsts it's primitive description in such conservative form.
+Within the algorithm, Philip Mosz makes use of both representations of the formula.
+He uses the primitive form to extrapolate values in time and space, but uses the conservative representation to derive the update formula.
+In some sorts, this gives us the best of both worlds.
+Extrapolating within the primitive form is numerically more stable whereas the conservative representation is used to compute the update efficiently.
+\todo{describe finite volume approach, maybe small image}
+\todo{loose a word or two about boundary conditions and initial values}
+
+The algorithm in principle works as follows:
+For each timestep and each cell do
+\begin{enumerate}
+  \item Get cell central primitive variables (convert from conservative ones)
+  \item Calculate timestep (What does that mean exactly)
+  \item Calculate gradient of primitive vars (e.g using central differences)
+  \item Extrapolate prim. vars. in time ($\Delta t / 2$)
+  \item Extrapolate prim. vars. to faces ($\Delta x / 2$)
+  \item Compute Fluxes along each face
+  \item Update solution by adding Fluxes to conserv. vars
+\end{enumerate}
+
+Update Formula:
+\begin{equation}
+Q^{(n+1)} = Q^{(n)} - \Delta t \Delta x \sum_{j} \hat{F}_{ij}^{(n + \frac{1}{2})}
+\end{equation}
+
+We aim to introduce some optimization techniques that decrease the overall runtime of the computation.
+To achieve this, we use techniques obtained from the lectures, specifically using cython to use precompiled c code to reduce python overhead,
+introducing gpu accellerators using pytorch and investigate a distributed computation approach utilizing dask.
+
+\section{Baseline tests}
+
+\section{Optimizations using Pytorch}
+The original implementation makes heavy use of numpy functionalities.
+All data is stored as numpy arrays that are incrementally updated using the computed fluxes.
+This provides an easy approach to move the computations on a GPU using pytorch.
+Pytorch's computations are run using tensors --- an immutable datatype that shares resemblence with numpy arrays.
+A big difference however is that tensor operations are supported to be computed using accelerators.
+Due to the fact that pytorch mirrors numpys interface, we simply need to convert said numpy arrays to pytorch tensors
+and tell pytorch to perform the computations using GPU compatible hardware.
+
+To compare the performance on a wider range of grid sizes, we chose to limit the simulation to
+As one can see in the results of figure [FIGURE!],
+$\rightarrow$ recompute plots...
+
 \section{Appendix:}
 
 % content end
