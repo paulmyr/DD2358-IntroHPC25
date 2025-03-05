@@ -1,6 +1,9 @@
-import matplotlib.pyplot as plt
+import argparse
 import finitevolume_cython_lib
+import matplotlib.pyplot as plt
 import numpy as np
+
+from timeit import default_timer as timer
 
 """
 Create Your Own Finite Volume Fluid Simulation (With Python)
@@ -8,7 +11,6 @@ Philip Mocz (2020) Princeton Univeristy, @PMocz
 
 Simulate the Kelvin Helmholtz Instability
 In the compressible Euler equations
-
 """
 
 
@@ -193,19 +195,20 @@ def getFlux(rho_L, rho_R, vx_L, vx_R, vy_L, vy_R, P_L, P_R, gamma):
     return flux_Mass, flux_Momx, flux_Momy, flux_Energy
 
 
-def main():
+def main(N=128, tEnd=2, plotRealTime=False):
     """ Finite Volume simulation """
 
     # Simulation parameters
-    N                      = 512 # resolution
+    N                      = N # resolution
     boxsize                = 1.
     gamma                  = 5/3 # ideal gas gamma
     courant_fac            = 0.4
     t                      = 0
-    tEnd                   = 2
+    tEnd                   = tEnd
     tOut                   = 0.02 # draw frequency
     useSlopeLimiting       = False
-    plotRealTime = True # switch on for plotting as the simulation goes along
+    plotRealTime = False # switch on for plotting as the simulation goes along
+    plotFinalPlot = False # switch on for plotting as the simulation goes along
 
     # Mesh
     dx = boxsize / N
@@ -225,7 +228,8 @@ def main():
     Mass, Momx, Momy, Energy = getConserved( rho, vx, vy, P, gamma, vol )
 
     # prep figure
-    fig = plt.figure(figsize=(4,4), dpi=80)
+    if plotRealTime or plotFinalPlot:
+        fig = plt.figure(figsize=(4,4), dpi=80)
     outputCount = 1
 
     # Simulation Main Loop
@@ -268,10 +272,6 @@ def main():
         P_XL,   P_XR,   P_YL,   P_YR   = extrapolateInSpaceToFace(P_prime,   P_dx,   P_dy,   dx)
 
         # compute fluxes (local Lax-Friedrichs/Rusanov)
-        # flux_Mass_X, flux_Momx_X, flux_Momy_X, flux_Energy_X = getFlux(rho_XL, rho_XR, vx_XL, vx_XR, vy_XL, vy_XR, P_XL, P_XR, gamma)
-        # flux_Mass_Y, flux_Momy_Y, flux_Momx_Y, flux_Energy_Y = getFlux(rho_YL, rho_YR, vy_YL, vy_YR, vx_YL, vx_YR, P_YL, P_YR, gamma)
-
-
         flux_Mass_X, flux_Momx_X, flux_Momy_X, flux_Energy_X = finitevolume_cython_lib.getFluxRawC(rho_XL, rho_XR, vx_XL, vx_XR, vy_XL, vy_XR, P_XL, P_XR, gamma)
         flux_Mass_Y, flux_Momy_Y, flux_Momx_Y, flux_Energy_Y = finitevolume_cython_lib.getFluxRawC(rho_YL, rho_YR, vy_YL, vy_YR, vx_YL, vx_YR, P_YL, P_YR, gamma)
 
@@ -285,7 +285,7 @@ def main():
         t += dt
 
         # plot in real time
-        if (plotRealTime and plotThisTurn) or (t >= tEnd):
+        if (plotRealTime and plotThisTurn) or (t >= tEnd and plotFinalPlot):
             plt.cla()
             plt.imshow(rho.T)
             plt.clim(0.8, 2.2)
@@ -295,17 +295,81 @@ def main():
             ax.get_yaxis().set_visible(False)
             ax.set_aspect('equal')
             plt.pause(0.001)
-            plt.title("Cython")
             outputCount += 1
 
-
+        # return 0
     # Save figure
-    plt.savefig('finitevolume.png',dpi=240)
-    plt.show()
+    # plt.savefig(f'result_{N}.png',dpi=240)
+    # plt.show()
 
     return 0
 
 
+def timed(f, *args, **kwargs):
+    t0 = timer()
+    f(*args, **kwargs)
+    t1 = timer()
+    return t1 - t0
+
+
+def run_function_as_experiment(f, lbound, ubound, num_runs, tEnd):
+    grid_sizes = [2 ** i for i in range(lbound, ubound)]
+    wtimes = np.zeros(len(grid_sizes))
+    for i, grid_size in enumerate(grid_sizes):
+        for _ in range(num_runs):
+            wtimes[i] += timed(f, N=grid_size, tEnd=tEnd)
+        wtimes /= num_runs
+
+    print(f"ran {f.__name__}")
+    print(f"each grid size ran {num_runs} runs, each run simulated {tEnd} seconds.")
+    for i, j in zip(grid_sizes, wtimes):
+        print(f"Grid: ({i}, {i})\n\tavg runtime: {j}s")
+    # plt.plot(grid_sizes, wtimes, label=f"{f.__name__} (m1 (16') macbook pro, 2021)", marker='o')
+    print(wtimes)
+    plt.plot(grid_sizes, wtimes, label=f"{f.__name__} (Apple MacBook M1 Air, 2020)", marker='o')
+
+    for i,j in zip(grid_sizes, wtimes):
+        plt.annotate("%.3f s" % j, xy=(i,j), xytext=(5,-10), textcoords="offset points")
+
 
 if __name__== "__main__":
-    main()
+    # Initialize parser
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-l", "--lbound", help = "lower bound for N in power of two (default: 4)")
+    parser.add_argument("-u", "--ubound", help = "upper bound for N in power of two (default: 12)")
+    parser.add_argument("-n", "--nruns", help = "nubmer of runs per grid size (default: 3)")
+    parser.add_argument("-t", "--tend", help = "number of seconds simulation should run (default: 2)")
+
+    _args = parser.parse_args()
+
+    if not _args.lbound:
+        _args.lbound = 4
+    else:
+        _args.lbound = int(_args.lbound)
+    
+    if not _args.ubound:
+        _args.ubound = 8 # (range goes up to 12-1 therefore 11
+    else:
+        _args.ubound = int(_args.ubound) + 1
+        
+    if not _args.nruns:
+        _args.nruns = 3
+    else:
+        _args.nruns = int(_args.nruns)
+
+    if not _args.tend:
+        _args.tend = 2
+    else:
+        _args.tend = float(_args.tend)
+
+    # main
+    run_function_as_experiment(main, _args.lbound, _args.ubound, _args.nruns, _args.tend)
+
+    plt.xscale("log", base=2)
+    plt.xlabel("N (gridsize: 2**N x 2**N)")
+    
+    plt.yscale("log", base=10)
+    plt.ylabel("wtime (in s)")
+    plt.legend()
+
+    plt.show()

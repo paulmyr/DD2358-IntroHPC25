@@ -383,4 +383,4 @@ def getFluxRawC(double[:,:] rho_L, double[:,:] rho_R, double[:,:] vx_L, double[:
 
     compute_flux(&rho_L[0, 0], &rho_R[0, 0], &vx_L[0, 0], &vx_R[0, 0], &vy_L[0, 0], &vy_R[0, 0], &P_L[0, 0], &P_R[0, 0], gamma, &flux_Mass[0, 0], &flux_Momx[0, 0], &flux_Momy[0, 0], &flux_Energy[0, 0], N)
     
-    return flux_Mass, flux_Momx, flux_Momy, flux_Energy
+    return np.asarray(flux_Mass), np.asarray(flux_Momx), np.asarray(flux_Momy), np.asarray(flux_Energy)
