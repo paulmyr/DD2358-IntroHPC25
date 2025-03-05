@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <math.h>
+#include "flux.h"
 
 double max(double first, double second) {
     if (first < second) {
