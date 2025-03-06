@@ -324,11 +324,11 @@ def run_function_as_experiment(f, lbound, ubound, num_runs, tEnd):
     print("================== EXPERIMENT INITIATED ===================")
     for i, grid_size in enumerate(grid_sizes):
         print(f"Expreiment STARTED for grid size: ({grid_size},{grid_size})")
-        for _ in range(num_runs):
+        for j in range(num_runs):
             wtimes[i] += timed(f, N=grid_size, tEnd=tEnd)
-            print(f"\t Run {_} completed.")
-        print(f"Experiment COMPLETED for grid size: ({grid_size},{grid_size})")
-    wtimes = wtimes / num_runs
+            print(f"\t Run {j} completed.")
+        wtimes[i] = wtimes[i] / num_runs
+        print(f"Experiment COMPLETED for grid size: ({grid_size},{grid_size}), took {wtimes[i]}s")
     print("================== RESULTS ===================")
 
     print(f"ran {f.__name__}")
