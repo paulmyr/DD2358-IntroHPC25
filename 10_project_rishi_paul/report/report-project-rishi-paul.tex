@@ -181,16 +181,17 @@
 %
 
 \section*{Prefix}
-The original code from this project is taken from \url{https://github.com/pmocz/finitevolume-python/blob/master/finitevolume.py}.\\
-We mad following changes (bugfixes) before starting with the project:
+The original code for this project is taken from the following \href{https://github.com/pmocz/finitevolume-python/blob/master/finitevolume.py}{GitHub repository}.\\
+The code is written by \href{https://pmocz.github.io}{Philip Mocz}.
+We made following changes before starting with the project:
 
 \begin{enumerate}
   \item Fixed a bug that resulted in an infinite loop when setting the \verb|plotRealTime| flag to \verb|False|.
   \item ...\todo{Add more bugs that may come up!}
 \end{enumerate}
 
-\todo[inline]{Report outline}
-\section*{Preliminary}
+\tableofcontents
+\newpage
 \section{Introduction}
 The Kelvin-Helmholz-Inequality is a phenomenom that arises when two fluid layers of different velocities interface with each other.
 It results in characteristic patterns that can be observered, e.g. in clouds, the surface of the sun or in jupyters colorful atmosphere.
@@ -229,6 +230,51 @@ introducing gpu accellerators using pytorch and investigate a distributed comput
 
 \section{Baseline tests}
 
+\subsection{Runtime}
+We approached this problem by trying to get a basic understanding of what might be the runtime bottleneck.
+For this we used the line profiler.
+We simulated on a 256x256 grid for 3749 iterations, which the script needs to perform a 2s simulation.
+We came to the conclusion that a large portion (nearly 50\% for a single iteration) of computation time is spent to compute the fluxes (\verb|getFlux| method).
+\begin{lstlisting}[language=bash,basicstyle=\scriptsize\ttfamily]
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   195                                           @profile
+   196                                           def main():
+[...]
+   270                                                   # compute fluxes
+   271      3694    5113424.0   1384.3     24.9          [...] = getFlux(...)
+   272      3694    4595361.0   1244.0     22.4          [...] = getFlux(...)
+[...]
+\end{lstlisting}
+All other function calls accumulated to the other 50\%, however each in itself were rather neglegtable (at most below 4\%).
+This indicated to us that we should focus our efforts onto this part of the computation.
+
+\subsection{Memory}
+\todo[inline]{Write everything...}
+
+\subsection{Hyperparameters\todo{This is a working title. Is there a better headline titel for this?}}
+The runtime of the simulation depends on multiple parameters.
+First and foremost the number of iterations:
+this regulates the total time (number of time steps) we want to simulate.
+Figure \ref{fig:runtime_per_iteration} displays the runtime the computation of each timestep needs.
+We can observe that the runtime per iteration is mostly consistant.
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=0.9\textwidth]{imgs/runtime_baseline_per_iteration}
+  \caption{Runtime per iteration on 2020 macbook air}
+  \label{fig:runtime_per_iteration}
+\end{figure}
+Important to note is that the total number of timesteps computed increases by introducing finer grid sizes.
+With other words, simulating two seconds using a fine grid uses more iterations than simulating two seconds using a corse grid. 
+The reason is that $dt$ is computed each loop, which is dependent on $dx$, the granularity of the mesh.
+
+The second important parameter is the grid size.
+Finer grids allow for higher precision but increase the computational complexity quadratically.
+To measure runtime over a variety of gridsizes, we decided to keep the number of time steps constant.
+We simulated 256 timesteps over all grid sizes and performed each computation three times, which we then averaged.
+\todo{Insert graphic of all baseline runs!}
+
+\section{Optimizations using Cython}
 \section{Optimizations using Pytorch}
 The original implementation makes heavy use of numpy functionalities.
 All data is stored as numpy arrays that are incrementally updated using the computed fluxes.
@@ -237,11 +283,15 @@ Pytorch's computations are run using tensors --- an immutable datatype that shar
 A big difference however is that tensor operations are supported to be computed using accelerators.
 Due to the fact that pytorch mirrors numpys interface, we simply need to convert said numpy arrays to pytorch tensors
 and tell pytorch to perform the computations using GPU compatible hardware.
+\todo[inline]{insert figure of GPU runtimes}
 
-To compare the performance on a wider range of grid sizes, we chose to limit the simulation to
-As one can see in the results of figure [FIGURE!],
-$\rightarrow$ recompute plots...
+To compare the performance on a wider range of grid sizes, we chose to limit the simulation to a fixed number time steps.
+As one can see\todo{describe figure before referencing it} in the results of figure, making use of accelerators *greatly* improves the overall runtime for larger grid sizes.
+As noted above \todo{insert ref to figure}, for finer grids this means we simulate less time in total.
 
+\section{Optimizations using Dask}
+
+\section{Conclusion}
 \section{Appendix:}
 
 % content end
