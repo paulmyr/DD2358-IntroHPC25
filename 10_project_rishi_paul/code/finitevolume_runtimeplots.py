@@ -326,7 +326,7 @@ def run_function_as_experiment(f, lbound, ubound, num_runs, tEnd):
         wtimes /= num_runs
 
     print(f"ran {f.__name__}")
-    print(f"each grid size ran {num_runs} runs, each run simulated {tEnd} seconds.")
+    print(f"each grid size ran {num_runs} runs, each run simulated {tEnd} iterations.")
     for i, j in zip(grid_sizes, wtimes):
         print(f"Grid: ({i}, {i})\n\tavg runtime: {j}s")
     # plt.plot(grid_sizes, wtimes, label=f"{f.__name__} (m1 (16') macbook pro, 2021)", marker='o')
