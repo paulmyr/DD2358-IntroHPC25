@@ -1,7 +1,8 @@
 import argparse
-import finitevolume_cython_lib
+
 import matplotlib.pyplot as plt
 import numpy as np
+import finitevolume_cython_lib
 
 from timeit import default_timer as timer
 
@@ -231,9 +232,11 @@ def main(N=128, tEnd=2, plotRealTime=False):
     if plotRealTime or plotFinalPlot:
         fig = plt.figure(figsize=(4,4), dpi=80)
     outputCount = 1
-
+    
+    loop_iteration = 1
     # Simulation Main Loop
-    while t < tEnd:
+    # while t < tEnd:
+    while loop_iteration < tEnd:
 
         # get Primitive variables
         rho, vx, vy, P = getPrimitive( Mass, Momx, Momy, Energy, gamma, vol )
@@ -283,6 +286,9 @@ def main(N=128, tEnd=2, plotRealTime=False):
 
         # update time
         t += dt
+
+        # print(loop_iteration)
+        loop_iteration += 1
 
         # plot in real time
         if (plotRealTime and plotThisTurn) or (t >= tEnd and plotFinalPlot):
