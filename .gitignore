@@ -28,3 +28,6 @@
 03_compgpu/exercise1/*.so
 **/*.so
 
+10_project_rishi_paul/code/*.png
+10_project_rishi_paul/code/cython/*.html
+10_project_rishi_paul/code/cython/finite*.c
