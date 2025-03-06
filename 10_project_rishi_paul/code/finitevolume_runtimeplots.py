@@ -323,7 +323,7 @@ def run_function_as_experiment(f, lbound, ubound, num_runs, tEnd):
     for i, grid_size in enumerate(grid_sizes):
         for _ in range(num_runs):
             wtimes[i] += timed(f, N=grid_size, tEnd=tEnd)
-        wtimes /= num_runs
+    wtimes = wtimes / num_runs
 
     print(f"ran {f.__name__}")
     print(f"each grid size ran {num_runs} runs, each run simulated {tEnd} iterations.")
