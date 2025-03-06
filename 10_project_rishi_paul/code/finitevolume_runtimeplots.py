@@ -232,9 +232,8 @@ def main(N=128, tEnd=2, plotRealTime=False):
         fig = plt.figure(figsize=(4,4), dpi=80)
     outputCount = 1
     
-    loop_iteration = 1
+    loop_iteration = 0
     # Simulation Main Loop
-    # while t < tEnd:
     while loop_iteration < tEnd:
 
         # get Primitive variables
@@ -326,7 +325,7 @@ def run_function_as_experiment(f, lbound, ubound, num_runs, tEnd):
         for _ in range(num_runs):
             wtimes[i] += timed(f, N=grid_size, tEnd=tEnd)
             print(f"\t Run {_} completed.")
-        wtimes[i] = wtimes / num_runs
+        wtimes[i] = wtimes[i] / num_runs
         print(f"Experiment COMPLETED for grid size: ({grid_size},{grid_size}), took {wtimes[i]}s")
     print("================== RESULTS ===================")
 
