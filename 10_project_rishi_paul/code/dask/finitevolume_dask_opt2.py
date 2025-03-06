@@ -353,12 +353,14 @@ def run_function_as_experiment(f, lbound, ubound, num_runs, tEnd):
     wtimes = np.zeros(len(grid_sizes))
     print("================== EXPERIMENT INITIATED ===================")
     for i, grid_size in enumerate(grid_sizes):
+        print(f"Expreiment STARTED for grid size: ({grid_size},{grid_size})")
         for _ in range(num_runs):
             wtimes[i] += timed(f, N=grid_size, tEnd=tEnd)
-        print(f"Experiment completed for grid size: ({grid_size},{grid_size})")
+            print(f"\t Run {_} completed.")
+        print(f"Experiment COMPLETED for grid size: ({grid_size},{grid_size})")
     wtimes = wtimes / num_runs
     print("================== RESULTS ===================")
-    
+
     print(f"ran {f.__name__}")
     print(f"each grid size ran {num_runs} runs, each run simulated {tEnd} iterations.")
     for i, j in zip(grid_sizes, wtimes):
