@@ -10,7 +10,7 @@ from finitevolume_cython_lib import getFluxRawC
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'utils')))
 
 from timing_utils import measure_runtime
-from misc import continue_experiment
+from misc import continue_experiment, get_runtimes_for_impl, update_json_with_runtimes
 
 """
 Create Your Own Finite Volume Fluid Simulation (With Python)
@@ -344,9 +344,18 @@ def main(N=128, tEnd=2, plotRealTime=False, plotFinalPlot=False, terminate_using
 def time_main():
     measure_runtime(exp_function=main)
 
+def dump_runtimes_to_json():
+    runtimes = get_runtimes_for_impl(main)
+    update_json_with_runtimes("cython_dask", runtimes)
+    print(f"Times written to json! They were: {runtimes}")
+
 if __name__== "__main__":
     # Uncomment this to run a single experiment, visualizing the experiment as well
-    main(N=128, tEnd=2, plotRealTime=True, plotFinalPlot=True, terminate_using="T")
+    # main(N=128, tEnd=2, plotRealTime=True, plotFinalPlot=True, terminate_using="T")
 
     # Uncomment this to time the experiment
     # time_main()
+
+    # Uncomment this to run the experiment 20 times on a 128x128 grid anda dump runtimes to json
+    # Used for box-plotting
+    dump_runtimes_to_json()

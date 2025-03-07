@@ -28,7 +28,7 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'utils')))
 
 from timing_utils import measure_runtime
-from misc import continue_experiment
+from misc import continue_experiment, continue_experiment, get_runtimes_for_impl, update_json_with_runtimes
 
 
 """
@@ -347,10 +347,18 @@ def main(N=128, tEnd=2, plotRealTime=False, plotFinalPlot=False, terminate_using
 
     return rho
 
+def dump_runtimes_to_json():
+    runtimes = get_runtimes_for_impl(main)
+    update_json_with_runtimes("torch_mps", runtimes)
+    print(f"Times written to json! They were: {runtimes}")
 
 if __name__== "__main__":
     # Uncomment this to run a single experiment, visualizing the experiment as well
-    main(N=256, tEnd=20, plotRealTime=True, plotFinalPlot=True, terminate_using="T")
+    # main(N=256, tEnd=20, plotRealTime=True, plotFinalPlot=True, terminate_using="T")
 
     # Uncomment this to time the experiment
     # measure_runtime(exp_function=main)
+
+    # Uncomment this to run the experiment 20 times on a 128x128 grid anda dump runtimes to json
+    # Used for box-plotting
+    dump_runtimes_to_json()
