@@ -1,8 +1,10 @@
 import matplotlib.pyplot as plt
 import numpy as np
-import dask.array as da
+from dask import delayed
+import dask
 import sys
 import os
+from finitevolume_cython_lib import getFluxRawC
 # Add the path to folder1 to sys.path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'utils')))
 
@@ -62,6 +64,7 @@ def getPrimitive( Mass, Momx, Momy, Energy, gamma, vol ):
 
     return rho, vx, vy, P
 
+@delayed
 def getGradient(f, dx):
     """
     Calculate the gradients of a field
@@ -99,6 +102,7 @@ def slopeLimit(f, dx, f_dx, f_dy):
 
     return f_dx, f_dy
 
+@delayed
 def extrapolateInSpaceToFace(f, f_dx, f_dy, dx):
     """
     Calculate the gradients of a field
@@ -125,6 +129,7 @@ def extrapolateInSpaceToFace(f, f_dx, f_dy, dx):
 
     return f_XL, f_XR, f_YL, f_YR
 
+@delayed
 def applyFluxes(F, flux_F_X, flux_F_Y, dx, dt):
     """
     Apply fluxes to conserved variables
@@ -146,8 +151,8 @@ def applyFluxes(F, flux_F_X, flux_F_Y, dx, dt):
 
     return F
 
-
-def getFlux(rho_L, rho_R, vx_L, vx_R, vy_L, vy_R, P_L, P_R, gamma=5/3):
+@delayed
+def getFlux(rho_L, rho_R, vx_L, vx_R, vy_L, vy_R, P_L, P_R, gamma):
     """
     Calculate fluxed between 2 states with local Lax-Friedrichs/Rusanov rule
     rho_L        is a matrix of left-state  density
@@ -194,7 +199,23 @@ def getFlux(rho_L, rho_R, vx_L, vx_R, vy_L, vy_R, P_L, P_R, gamma=5/3):
     flux_Momy   -= C * 0.5 * (rho_L * vy_L - rho_R * vy_R)
     flux_Energy -= C * 0.5 * ( en_L - en_R )
 
-    return np.array([flux_Mass, flux_Momx, flux_Momy, flux_Energy])
+    return flux_Mass, flux_Momx, flux_Momy, flux_Energy
+
+@delayed
+def get_rho_prime(rho, dt, vx, rho_dx, vx_dx, vy, rho_dy, vy_dy):
+    return rho - 0.5*dt * ( vx * rho_dx + rho * vx_dx + vy * rho_dy + rho * vy_dy)
+
+@delayed
+def get_vx_prime(vx, dt, vx_dx, vy, vx_dy, rho, P_dx):
+    return vx  - 0.5*dt * ( vx * vx_dx + vy * vx_dy + (1/rho) * P_dx )
+
+@delayed
+def get_vy_prime(vy, dt, vx, vy_dx, vy_dy, rho, P_dy):
+    return vy  - 0.5*dt * ( vx * vy_dx + vy * vy_dy + (1/rho) * P_dy )
+
+@delayed
+def get_P_prime(P, dt, gamma, vx_dx, vy_dy, vx, P_dx, vy, P_dy):
+    return P   - 0.5*dt * ( gamma*P * (vx_dx + vy_dy)  + vx * P_dx + vy * P_dy )
 
 
 def main(N=128, tEnd=2, plotRealTime=False, plotFinalPlot=False, terminate_using="I"):
@@ -235,6 +256,7 @@ def main(N=128, tEnd=2, plotRealTime=False, plotFinalPlot=False, terminate_using
     loop_iteration = 0
     # Simulation Main Loop
     while continue_experiment(terminate_using, curr_time=t, curr_iters=loop_iteration, end_count=tEnd):
+
         # get Primitive variables
         rho, vx, vy, P = getPrimitive( Mass, Momx, Momy, Energy, gamma, vol )
 
@@ -247,10 +269,12 @@ def main(N=128, tEnd=2, plotRealTime=False, plotFinalPlot=False, terminate_using
             plotThisTurn = True
 
         # calculate gradients
-        rho_dx, rho_dy = getGradient(rho, dx)
-        vx_dx,  vx_dy  = getGradient(vx,  dx)
-        vy_dx,  vy_dy  = getGradient(vy,  dx)
-        P_dx,   P_dy   = getGradient(P,   dx)
+        tasks_gradient = [getGradient(rho, dx), getGradient(vx,  dx), getGradient(vy,  dx), getGradient(P,   dx)]
+        result_gradient = dask.compute(*tasks_gradient, n_workers=4, threads_per_worker=2)
+        rho_dx, rho_dy = result_gradient[0]
+        vx_dx,  vx_dy  = result_gradient[1]
+        vy_dx,  vy_dy  = result_gradient[2]
+        P_dx,   P_dy   = result_gradient[3]
 
         # slope limit gradients
         if useSlopeLimiting:
@@ -260,46 +284,38 @@ def main(N=128, tEnd=2, plotRealTime=False, plotFinalPlot=False, terminate_using
             P_dx,   P_dy   = slopeLimit(P  , dx, P_dx,   P_dy  )
 
         # extrapolate half-step in time
-        rho_prime = rho - 0.5*dt * ( vx * rho_dx + rho * vx_dx + vy * rho_dy + rho * vy_dy)
-        vx_prime  = vx  - 0.5*dt * ( vx * vx_dx + vy * vx_dy + (1/rho) * P_dx )
-        vy_prime  = vy  - 0.5*dt * ( vx * vy_dx + vy * vy_dy + (1/rho) * P_dy )
-        P_prime   = P   - 0.5*dt * ( gamma*P * (vx_dx + vy_dy)  + vx * P_dx + vy * P_dy )
+        tasks_int = [get_rho_prime(rho, dt, vx, rho_dx, vx_dx, vy, rho_dy, vy_dy), get_vx_prime(vx, dt, vx_dx, vy, vx_dy, rho, P_dx), get_vy_prime(vy, dt, vx, vy_dx, vy_dy, rho, P_dy), get_P_prime(P, dt, gamma, vx_dx, vy_dy, vx, P_dx, vy, P_dy)]
+        results_int = dask.compute(*tasks_int, n_workers=4, threads_per_worker=2)
+        rho_prime = results_int[0]
+        vx_prime  = results_int[1]
+        vy_prime  = results_int[2]
+        P_prime   = results_int[3]
 
         # extrapolate in space to face centers
-        rho_XL, rho_XR, rho_YL, rho_YR = extrapolateInSpaceToFace(rho_prime, rho_dx, rho_dy, dx)
-        vx_XL,  vx_XR,  vx_YL,  vx_YR  = extrapolateInSpaceToFace(vx_prime,  vx_dx,  vx_dy,  dx)
-        vy_XL,  vy_XR,  vy_YL,  vy_YR  = extrapolateInSpaceToFace(vy_prime,  vy_dx,  vy_dy,  dx)
-        P_XL,   P_XR,   P_YL,   P_YR   = extrapolateInSpaceToFace(P_prime,   P_dx,   P_dy,   dx)
+
+        tasks_extrapolate = [extrapolateInSpaceToFace(rho_prime, rho_dx, rho_dy, dx), extrapolateInSpaceToFace(vx_prime,  vx_dx,  vx_dy,  dx), extrapolateInSpaceToFace(vy_prime,  vy_dx,  vy_dy,  dx), extrapolateInSpaceToFace(P_prime,   P_dx,   P_dy,   dx)]
+        result_extrapolate = dask.compute(*tasks_extrapolate, n_workers=4, threads_per_worker=2)
+        rho_XL, rho_XR, rho_YL, rho_YR = result_extrapolate[0]
+        vx_XL,  vx_XR,  vx_YL,  vx_YR  = result_extrapolate[1]
+        vy_XL,  vy_XR,  vy_YL,  vy_YR  = result_extrapolate[2]
+        P_XL,   P_XR,   P_YL,   P_YR   = result_extrapolate[3]
 
         # compute fluxes (local Lax-Friedrichs/Rusanov)
-        rho_XL_dask, rho_XR_dask = da.from_array(rho_XL, chunks=(N / 4, N / 4)), da.from_array(rho_XR, chunks=(N / 4, N / 4))
-        vx_XL_dask, vx_XR_dask = da.from_array(vx_XL, chunks=(N / 4, N / 4)), da.from_array(vx_XR, chunks=(N / 4, N / 4))
-        vy_XL_dask, vy_XR_dask = da.from_array(vy_XL, chunks=(N / 4, N / 4)), da.from_array(vy_XR, chunks=(N / 4, N / 4))
-        P_XL_dask, P_XR_dask = da.from_array(P_XL, chunks=(N / 4, N / 4)), da.from_array(P_XR, chunks=(N / 4, N / 4))
-
-        # rho_YL_dask, rho_YR_dask = da.from_array(rho_YL, chunks=CHUNK_SIZE), da.from_array(rho_YR, chunks=CHUNK_SIZE)
-        # vy_YL_dask, vy_YR_dask = da.from_array(vy_YL, chunks=CHUNK_SIZE), da.from_array(vy_YR, chunks=CHUNK_SIZE)
-        # vx_YL_dask, vx_YR_dask = da.from_array(vx_YL, chunks=CHUNK_SIZE), da.from_array(vx_YR, chunks=CHUNK_SIZE)
-        # P_YL_dask, P_YR_dask = da.from_array(P_YL, chunks=CHUNK_SIZE), da.from_array(P_YR, chunks=CHUNK_SIZE)
-
-        flux_x_dir = da.map_blocks(getFlux, rho_XL_dask, rho_XR_dask, vx_XL_dask, vx_XR_dask, vy_XL_dask, vy_XR_dask, P_XL_dask, P_XR_dask, dtype=rho_XL_dask.dtype, chunks=(4, N // 4, N // 4))
-        # flux_y_dir = da.map_blocks(getFlux, rho_YL_dask, rho_YR_dask, vy_YL_dask, vy_YR_dask, vx_YL_dask, vx_YR_dask, P_YL_dask, P_YR_dask)
-
-        # flux_Mass_X, flux_Momx_X, flux_Momy_X, flux_Energy_X = getFlux(rho_XL, rho_XR, vx_XL, vx_XR, vy_XL, vy_XR, P_XL, P_XR, gamma)
-        flux_Mass_Y, flux_Momy_Y, flux_Momx_Y, flux_Energy_Y = getFlux(rho_YL, rho_YR, vy_YL, vy_YR, vx_YL, vx_YR, P_YL, P_YR, gamma)
-
-        foo = flux_x_dir.compute(n_workers=8, threads_per_worker=1)
-        flux_Mass_X, flux_Momx_X, flux_Momy_X, flux_Energy_X = np.split(foo, 4, axis=0)
+        tasks_flux = [getFluxRawC(rho_XL, rho_XR, vx_XL, vx_XR, vy_XL, vy_XR, P_XL, P_XR, gamma), getFluxRawC(rho_YL, rho_YR, vy_YL, vy_YR, vx_YL, vx_YR, P_YL, P_YR, gamma)]
+        result_flux = dask.compute(*tasks_flux, n_workers=2, threads_per_worker=2)
+        flux_Mass_X, flux_Momx_X, flux_Momy_X, flux_Energy_X = result_flux[0]
+        flux_Mass_Y, flux_Momy_Y, flux_Momx_Y, flux_Energy_Y = result_flux[1]
 
         # update solution
-        Mass   = applyFluxes(Mass, flux_Mass_X[0], flux_Mass_Y, dx, dt)
-        Momx   = applyFluxes(Momx, flux_Momx_X[0], flux_Momx_Y, dx, dt)
-        Momy   = applyFluxes(Momy, flux_Momy_X[0], flux_Momy_Y, dx, dt)
-        Energy = applyFluxes(Energy, flux_Energy_X[0], flux_Energy_Y, dx, dt)
+        tasks_apply = [applyFluxes(Mass, flux_Mass_X, flux_Mass_Y, dx, dt), applyFluxes(Momx, flux_Momx_X, flux_Momx_Y, dx, dt), applyFluxes(Momy, flux_Momy_X, flux_Momy_Y, dx, dt), applyFluxes(Energy, flux_Energy_X, flux_Energy_Y, dx, dt)]
+        result_apply = dask.compute(*tasks_apply, n_workers=4, threads_per_worker=2)
+        Mass   = result_apply[0]
+        Momx   = result_apply[1]
+        Momy   = result_apply[2]
+        Energy = result_apply[3]
 
         # update time
         t += dt
-
         loop_iteration += 1
 
         # plot in real time
@@ -313,7 +329,7 @@ def main(N=128, tEnd=2, plotRealTime=False, plotFinalPlot=False, terminate_using
             ax.get_yaxis().set_visible(False)
             ax.set_aspect('equal')
             plt.pause(0.001)
-            plt.title("Dask (Opt1)")
+            plt.title("Cython + Dask")
             outputCount += 1
 
 
