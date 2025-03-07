@@ -345,7 +345,7 @@ def main(N=128, tEnd=2, plotRealTime=False, plotFinalPlot=False, terminate_using
         # plt.savefig(f'result_{N}.png',dpi=240)
         plt.show()
 
-    return 0
+    return rho
 
 
 if __name__== "__main__":
