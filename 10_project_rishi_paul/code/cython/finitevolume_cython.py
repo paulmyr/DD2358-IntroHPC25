@@ -4,7 +4,7 @@ import finitevolume_cython_lib
 import sys
 import os
 
-# Add the path to folder1 to sys.path
+# Adding "utils" to path to be able to import from parent dir
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'utils')))
 
 from timing_utils import measure_runtime
