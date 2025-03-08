@@ -211,7 +211,7 @@ def main(N=128, tEnd=2, plotRealTime=False, plotFinalPlot=False, terminate_using
     tEnd                   = tEnd
     tOut                   = 0.02 # draw frequency
     useSlopeLimiting       = False
-    CHUNK_SIZE             = N // 4
+    CHUNK_SIZE             = N // 2
 
     # Mesh
     dx = boxsize / N
