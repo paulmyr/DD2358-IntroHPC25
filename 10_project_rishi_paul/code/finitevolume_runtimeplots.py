@@ -306,7 +306,9 @@ def main(N=128, tEnd=2, plotRealTime=False, plotFinalPlot=False, terminate_using
     return rho
 
 def time_main():
+    print("********* MEASURING RUNTIME FOR baseline *****************")
     measure_runtime(exp_function=main)
+    print("********* MEASURING RUNTIME FOR baseline *****************")
 
 def dump_runtimes_to_json():
     runtimes = get_runtimes_for_impl(main)
@@ -318,8 +320,8 @@ if __name__== "__main__":
     # main(N=128, tEnd=2, plotRealTime=True, plotFinalPlot=True, terminate_using="T")
 
     # Uncomment this to time the experiment
-    # time_main()
+    time_main()
 
     # Uncomment this to run the experiment 20 times on a 128x128 grid anda dump runtimes to json
     # Used for box-plotting
-    dump_runtimes_to_json()
+    # dump_runtimes_to_json()

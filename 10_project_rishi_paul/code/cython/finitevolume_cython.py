@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import finitevolume_cython_lib
+from functools import partial
 import sys
 import os
 
@@ -150,7 +151,7 @@ def applyFluxes(F, flux_F_X, flux_F_Y, dx, dt):
     return F
 
 
-def main(N=128, tEnd=2, plotRealTime=False, plotFinalPlot=False, terminate_using="I"):
+def main(N=128, tEnd=2, plotRealTime=False, plotFinalPlot=False, terminate_using="I", flux_function=finitevolume_cython_lib.getFluxRawC):
     """ Finite Volume simulation """
 
     # Simulation parameters
@@ -225,8 +226,8 @@ def main(N=128, tEnd=2, plotRealTime=False, plotFinalPlot=False, terminate_using
         P_XL,   P_XR,   P_YL,   P_YR   = extrapolateInSpaceToFace(P_prime,   P_dx,   P_dy,   dx)
 
         # compute fluxes (local Lax-Friedrichs/Rusanov)
-        flux_Mass_X, flux_Momx_X, flux_Momy_X, flux_Energy_X = finitevolume_cython_lib.getFluxRawC(rho_XL, rho_XR, vx_XL, vx_XR, vy_XL, vy_XR, P_XL, P_XR, gamma)
-        flux_Mass_Y, flux_Momy_Y, flux_Momx_Y, flux_Energy_Y = finitevolume_cython_lib.getFluxRawC(rho_YL, rho_YR, vy_YL, vy_YR, vx_YL, vx_YR, P_YL, P_YR, gamma)
+        flux_Mass_X, flux_Momx_X, flux_Momy_X, flux_Energy_X = flux_function(rho_XL, rho_XR, vx_XL, vx_XR, vy_XL, vy_XR, P_XL, P_XR, gamma)
+        flux_Mass_Y, flux_Momy_Y, flux_Momx_Y, flux_Energy_Y = flux_function(rho_YL, rho_YR, vy_YL, vy_YR, vx_YL, vx_YR, P_YL, P_YR, gamma)
 
         # update solution
         Mass   = applyFluxes(Mass, flux_Mass_X, flux_Mass_Y, dx, dt)
@@ -261,8 +262,12 @@ def main(N=128, tEnd=2, plotRealTime=False, plotFinalPlot=False, terminate_using
 
     return rho
 
-def time_main():
-    measure_runtime(exp_function=main)
+def time_main(flux_function):
+    print("********* MEASURING RUNTIME FOR cython *****************")
+    main_with_flux = partial(main, flux_function=flux_function)
+    main_with_flux.__name__ = main.__name__
+    measure_runtime(exp_function=main_with_flux)
+    print("********* FINISHED MEASURING RUNTIME FOR cython *****************")
 
 def dump_runtimes_to_json():
     runtimes = get_runtimes_for_impl(main)
@@ -274,8 +279,8 @@ if __name__== "__main__":
     # main(N=128, tEnd=2, plotRealTime=True, plotFinalPlot=True, terminate_using="T")
 
     # Uncomment this to time the experiment
-    # time_main()
+    time_main(finitevolume_cython_lib.getFluxRawC)
 
     # Uncomment this to run the experiment 20 times on a 128x128 grid anda dump runtimes to json
     # Used for box-plotting
-    dump_runtimes_to_json()
+    # dump_runtimes_to_json()

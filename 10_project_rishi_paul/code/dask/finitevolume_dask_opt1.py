@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import dask.array as da
+from dask.distributed import Client
 import sys
 import os
 
@@ -210,6 +211,7 @@ def main(N=128, tEnd=2, plotRealTime=False, plotFinalPlot=False, terminate_using
     tEnd                   = tEnd
     tOut                   = 0.02 # draw frequency
     useSlopeLimiting       = False
+    CHUNK_SIZE             = N // 4
 
     # Mesh
     dx = boxsize / N
@@ -273,23 +275,23 @@ def main(N=128, tEnd=2, plotRealTime=False, plotFinalPlot=False, terminate_using
         P_XL,   P_XR,   P_YL,   P_YR   = extrapolateInSpaceToFace(P_prime,   P_dx,   P_dy,   dx)
 
         # compute fluxes (local Lax-Friedrichs/Rusanov)
-        rho_XL_dask, rho_XR_dask = da.from_array(rho_XL, chunks=(N / 4, N / 4)), da.from_array(rho_XR, chunks=(N / 4, N / 4))
-        vx_XL_dask, vx_XR_dask = da.from_array(vx_XL, chunks=(N / 4, N / 4)), da.from_array(vx_XR, chunks=(N / 4, N / 4))
-        vy_XL_dask, vy_XR_dask = da.from_array(vy_XL, chunks=(N / 4, N / 4)), da.from_array(vy_XR, chunks=(N / 4, N / 4))
-        P_XL_dask, P_XR_dask = da.from_array(P_XL, chunks=(N / 4, N / 4)), da.from_array(P_XR, chunks=(N / 4, N / 4))
+        rho_XL_dask, rho_XR_dask = da.from_array(rho_XL, chunks=(CHUNK_SIZE, CHUNK_SIZE)), da.from_array(rho_XR, chunks=(CHUNK_SIZE, CHUNK_SIZE))
+        vx_XL_dask, vx_XR_dask = da.from_array(vx_XL, chunks=(CHUNK_SIZE, CHUNK_SIZE)), da.from_array(vx_XR, chunks=(CHUNK_SIZE, CHUNK_SIZE))
+        vy_XL_dask, vy_XR_dask = da.from_array(vy_XL, chunks=(CHUNK_SIZE, CHUNK_SIZE)), da.from_array(vy_XR, chunks=(CHUNK_SIZE, CHUNK_SIZE))
+        P_XL_dask, P_XR_dask = da.from_array(P_XL, chunks=(CHUNK_SIZE, CHUNK_SIZE)), da.from_array(P_XR, chunks=(CHUNK_SIZE, CHUNK_SIZE))
 
         # rho_YL_dask, rho_YR_dask = da.from_array(rho_YL, chunks=CHUNK_SIZE), da.from_array(rho_YR, chunks=CHUNK_SIZE)
         # vy_YL_dask, vy_YR_dask = da.from_array(vy_YL, chunks=CHUNK_SIZE), da.from_array(vy_YR, chunks=CHUNK_SIZE)
         # vx_YL_dask, vx_YR_dask = da.from_array(vx_YL, chunks=CHUNK_SIZE), da.from_array(vx_YR, chunks=CHUNK_SIZE)
         # P_YL_dask, P_YR_dask = da.from_array(P_YL, chunks=CHUNK_SIZE), da.from_array(P_YR, chunks=CHUNK_SIZE)
 
-        flux_x_dir = da.map_blocks(getFlux, rho_XL_dask, rho_XR_dask, vx_XL_dask, vx_XR_dask, vy_XL_dask, vy_XR_dask, P_XL_dask, P_XR_dask, dtype=rho_XL_dask.dtype, chunks=(4, N // 4, N // 4))
+        flux_x_dir = da.map_blocks(getFlux, rho_XL_dask, rho_XR_dask, vx_XL_dask, vx_XR_dask, vy_XL_dask, vy_XR_dask, P_XL_dask, P_XR_dask, dtype=rho_XL_dask.dtype, chunks=(4, CHUNK_SIZE, CHUNK_SIZE))
         # flux_y_dir = da.map_blocks(getFlux, rho_YL_dask, rho_YR_dask, vy_YL_dask, vy_YR_dask, vx_YL_dask, vx_YR_dask, P_YL_dask, P_YR_dask)
 
         # flux_Mass_X, flux_Momx_X, flux_Momy_X, flux_Energy_X = getFlux(rho_XL, rho_XR, vx_XL, vx_XR, vy_XL, vy_XR, P_XL, P_XR, gamma)
         flux_Mass_Y, flux_Momy_Y, flux_Momx_Y, flux_Energy_Y = getFlux(rho_YL, rho_YR, vy_YL, vy_YR, vx_YL, vx_YR, P_YL, P_YR, gamma)
 
-        foo = flux_x_dir.compute(n_workers=8, threads_per_worker=1)
+        foo = flux_x_dir.compute()
         flux_Mass_X, flux_Momx_X, flux_Momy_X, flux_Energy_X = np.split(foo, 4, axis=0)
 
         # update solution
@@ -329,8 +331,12 @@ def time_main():
     measure_runtime(exp_function=main)
 
 if __name__== "__main__":
-    # Uncomment this to run a single experiment, visualizing the experiment as well
-    main(N=128, tEnd=2, plotRealTime=True, plotFinalPlot=True, terminate_using="T")
+    # Uncomment this to run a single experiment, visualizing the experiment as well.
+    # client = Client()
+    # print("Dask Dashboard running at:", client.dashboard_link)
+    # input("Press a key once you have gone to the dashboard...")
+    main(N=128, tEnd=2, plotRealTime=False, plotFinalPlot=False, terminate_using="T")
+    # input("Press a key to close the program...")
 
     # Uncomment this to time the experiment
     # time_main()

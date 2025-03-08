@@ -17,8 +17,9 @@ def run_function_as_experiment(f, lbound, ubound, num_runs, tEnd):
     for i, grid_size in enumerate(grid_sizes):
         print(f"Expreiment STARTED for grid size: ({grid_size},{grid_size})")
         for _ in range(num_runs):
-            wtimes[i] += timed(f, N=grid_size, tEnd=tEnd)
-            print(f"\t Run {_} completed.")
+            curr_time = timed(f, N=grid_size, tEnd=tEnd)
+            wtimes[i] += curr_time
+            print(f"\t Run {_} completed: {curr_time}")
         wtimes[i] = wtimes[i] / num_runs
         print(f"Experiment COMPLETED for grid size: ({grid_size},{grid_size}), took {wtimes[i]}s")
     print("================== RESULTS ===================")
@@ -29,10 +30,10 @@ def run_function_as_experiment(f, lbound, ubound, num_runs, tEnd):
         print(f"Grid: ({i}, {i})\n\tavg runtime: {j}s")
     # plt.plot(grid_sizes, wtimes, label=f"{f.__name__} (m1 (16') macbook pro, 2021)", marker='o')
     print(wtimes)
-    plt.plot(grid_sizes, wtimes, label=f"{f.__name__} (Apple MacBook M1 Air, 2020)", marker='o')
+    # plt.plot(grid_sizes, wtimes, label=f"{f.__name__} (Apple MacBook M1 Air, 2020)", marker='o')
 
-    for i,j in zip(grid_sizes, wtimes):
-        plt.annotate("%.3f s" % j, xy=(i,j), xytext=(5,-10), textcoords="offset points")
+    # for i,j in zip(grid_sizes, wtimes):
+    #     plt.annotate("%.3f s" % j, xy=(i,j), xytext=(5,-10), textcoords="offset points")
 
 def measure_runtime(exp_function):
     # Initialize parser
@@ -67,11 +68,11 @@ def measure_runtime(exp_function):
     # main
     run_function_as_experiment(exp_function, _args.lbound, _args.ubound, _args.nruns, _args.tend)
 
-    plt.xscale("log", base=2)
-    plt.xlabel("N (gridsize: 2**N x 2**N)")
+    # plt.xscale("log", base=2)
+    # plt.xlabel("N (gridsize: 2**N x 2**N)")
     
-    plt.yscale("log", base=10)
-    plt.ylabel("wtime (in s)")
-    plt.legend()
+    # plt.yscale("log", base=10)
+    # plt.ylabel("wtime (in s)")
+    # plt.legend()
 
-    plt.show()
+    # plt.show()

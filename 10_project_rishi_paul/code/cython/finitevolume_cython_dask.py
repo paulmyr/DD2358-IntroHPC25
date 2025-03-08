@@ -271,7 +271,7 @@ def main(N=128, tEnd=2, plotRealTime=False, plotFinalPlot=False, terminate_using
 
         # calculate gradients
         tasks_gradient = [getGradient(rho, dx), getGradient(vx,  dx), getGradient(vy,  dx), getGradient(P,   dx)]
-        result_gradient = dask.compute(*tasks_gradient, n_workers=4, threads_per_worker=2)
+        result_gradient = dask.compute(*tasks_gradient)
         rho_dx, rho_dy = result_gradient[0]
         vx_dx,  vx_dy  = result_gradient[1]
         vy_dx,  vy_dy  = result_gradient[2]
@@ -286,7 +286,7 @@ def main(N=128, tEnd=2, plotRealTime=False, plotFinalPlot=False, terminate_using
 
         # extrapolate half-step in time
         tasks_int = [get_rho_prime(rho, dt, vx, rho_dx, vx_dx, vy, rho_dy, vy_dy), get_vx_prime(vx, dt, vx_dx, vy, vx_dy, rho, P_dx), get_vy_prime(vy, dt, vx, vy_dx, vy_dy, rho, P_dy), get_P_prime(P, dt, gamma, vx_dx, vy_dy, vx, P_dx, vy, P_dy)]
-        results_int = dask.compute(*tasks_int, n_workers=4, threads_per_worker=2)
+        results_int = dask.compute(*tasks_int)
         rho_prime = results_int[0]
         vx_prime  = results_int[1]
         vy_prime  = results_int[2]
@@ -295,7 +295,7 @@ def main(N=128, tEnd=2, plotRealTime=False, plotFinalPlot=False, terminate_using
         # extrapolate in space to face centers
 
         tasks_extrapolate = [extrapolateInSpaceToFace(rho_prime, rho_dx, rho_dy, dx), extrapolateInSpaceToFace(vx_prime,  vx_dx,  vx_dy,  dx), extrapolateInSpaceToFace(vy_prime,  vy_dx,  vy_dy,  dx), extrapolateInSpaceToFace(P_prime,   P_dx,   P_dy,   dx)]
-        result_extrapolate = dask.compute(*tasks_extrapolate, n_workers=4, threads_per_worker=2)
+        result_extrapolate = dask.compute(*tasks_extrapolate)
         rho_XL, rho_XR, rho_YL, rho_YR = result_extrapolate[0]
         vx_XL,  vx_XR,  vx_YL,  vx_YR  = result_extrapolate[1]
         vy_XL,  vy_XR,  vy_YL,  vy_YR  = result_extrapolate[2]
@@ -303,13 +303,13 @@ def main(N=128, tEnd=2, plotRealTime=False, plotFinalPlot=False, terminate_using
 
         # compute fluxes (local Lax-Friedrichs/Rusanov)
         tasks_flux = [getFluxRawC(rho_XL, rho_XR, vx_XL, vx_XR, vy_XL, vy_XR, P_XL, P_XR, gamma), getFluxRawC(rho_YL, rho_YR, vy_YL, vy_YR, vx_YL, vx_YR, P_YL, P_YR, gamma)]
-        result_flux = dask.compute(*tasks_flux, n_workers=2, threads_per_worker=2)
+        result_flux = dask.compute(*tasks_flux)
         flux_Mass_X, flux_Momx_X, flux_Momy_X, flux_Energy_X = result_flux[0]
         flux_Mass_Y, flux_Momy_Y, flux_Momx_Y, flux_Energy_Y = result_flux[1]
 
         # update solution
         tasks_apply = [applyFluxes(Mass, flux_Mass_X, flux_Mass_Y, dx, dt), applyFluxes(Momx, flux_Momx_X, flux_Momx_Y, dx, dt), applyFluxes(Momy, flux_Momy_X, flux_Momy_Y, dx, dt), applyFluxes(Energy, flux_Energy_X, flux_Energy_Y, dx, dt)]
-        result_apply = dask.compute(*tasks_apply, n_workers=4, threads_per_worker=2)
+        result_apply = dask.compute(*tasks_apply)
         Mass   = result_apply[0]
         Momx   = result_apply[1]
         Momy   = result_apply[2]
@@ -342,7 +342,9 @@ def main(N=128, tEnd=2, plotRealTime=False, plotFinalPlot=False, terminate_using
     return rho
 
 def time_main():
+    print("********* MEASURING RUNTIME FOR cython_dask *****************")
     measure_runtime(exp_function=main)
+    print("********* FINISHED MEASURING RUNTIME FOR cython_dask *****************")
 
 def dump_runtimes_to_json():
     runtimes = get_runtimes_for_impl(main)
@@ -354,8 +356,8 @@ if __name__== "__main__":
     # main(N=128, tEnd=2, plotRealTime=True, plotFinalPlot=True, terminate_using="T")
 
     # Uncomment this to time the experiment
-    # time_main()
+    time_main()
 
     # Uncomment this to run the experiment 20 times on a 128x128 grid anda dump runtimes to json
     # Used for box-plotting
-    dump_runtimes_to_json()
+    # dump_runtimes_to_json()
