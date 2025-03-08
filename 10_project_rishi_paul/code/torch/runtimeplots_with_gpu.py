@@ -357,10 +357,10 @@ if __name__== "__main__":
     # main(N=256, tEnd=20, plotRealTime=True, plotFinalPlot=True, terminate_using="T")
 
     # Uncomment this to time the experiment
-    print("********* MEASURING RUNTIME FOR torch_mps *****************")
-    measure_runtime(exp_function=main)
-    print("********* FINISHED MEASURING RUNTIME FOR torch_mps *****************")
+    # print("********* MEASURING RUNTIME FOR torch_mps *****************")
+    # measure_runtime(exp_function=main)
+    # print("********* FINISHED MEASURING RUNTIME FOR torch_mps *****************")
 
     # Uncomment this to run the experiment 20 times on a 128x128 grid anda dump runtimes to json
     # Used for box-plotting
-    # dump_runtimes_to_json()
+    dump_runtimes_to_json()
