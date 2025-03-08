@@ -55,6 +55,9 @@ def bar_plot_last_n_runtimes(key_list, wtime_dict, last_n, title, required_sizes
     call this function would be:
 
     bar_plot_last_n_runtimes([DEFAULT_KEY, CYTHON_KEY], WTIMES_PRO, 2, "Bar Plot of Last 2 Runtimes")
+
+    required_sizes is the sizezs we need to plot the bars for (must be in SORTED order). If not provided, then we default by starting
+    at 4096 (2**12) and count down.
     """
     wtimes = {}
     for key, value in wtime_dict.items():
@@ -69,6 +72,7 @@ def bar_plot_last_n_runtimes(key_list, wtime_dict, last_n, title, required_sizes
         for _ in range(last_n):
             grid_sizes.append(last_size)
             last_size = last_size // 2
+        grid_sizes = sorted(grid_sizes)
         
     keys = list(wtimes.keys())
     values = list(wtimes.values())
@@ -81,7 +85,7 @@ def bar_plot_last_n_runtimes(key_list, wtime_dict, last_n, title, required_sizes
     _, ax = plt.subplots()
 
     for i in range(num_bars):
-        bars = ax.bar(x_pos + i * bar_width, [v[i] for v in values], bar_width, label=f"{grid_sizes[len(grid_sizes) - 1 - i]} x {grid_sizes[len(grid_sizes) - 1 - i]}")
+        bars = ax.bar(x_pos + i * bar_width, [v[i] for v in values], bar_width, label=f"{grid_sizes[i]} x {grid_sizes[i]}")
 
         for bar in bars:
             height = bar.get_height()  # Get the height of the bar (value)
