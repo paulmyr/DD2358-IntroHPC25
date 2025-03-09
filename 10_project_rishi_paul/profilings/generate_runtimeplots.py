@@ -143,6 +143,7 @@ if __name__== "__main__":
     # line_plot_given_runtimes(key_list=DASK_COMPARISON.keys(), wtime_dict=DASK_COMPARISON, grid_sizes=[2**i for i in range(5, 11)], title="Dask Implementation Comparisons")
     # bar_plot_last_n_runtimes(key_list=DASK_COMPARISON.keys(), wtime_dict=DASK_COMPARISON, last_n=2, title="Dask Comparison (bigger grid sizes)", required_sizes=[512, 1024])
     # line_plot_given_runtimes(key_list=[DASK_KEY, DEFAULT_KEY], wtime_dict=WTIMES_PRO, grid_sizes=grid_sizes, title="Final Dask Comparison")
+    bar_plot_last_n_runtimes(key_list=[DEFAULT_KEY, DASK_KEY], wtime_dict=WTIMES_PRO, last_n=3, title="Dask vs Baseline (bigger grid sizes)")
 
     # $$$$$$$$$$$$$$$$$$$$$ CYTHON PLOTS $$$$$$$$$$$$$$$$$$$$$$$$$
     # line_plot_given_runtimes(key_list=[DEFAULT_KEY, "attempt_1"], wtime_dict=CYTHON_ATTEMPTS, grid_sizes=[2**i for i in range(5, 11)], title="Cython: Attempt 1")
@@ -150,12 +151,18 @@ if __name__== "__main__":
     # line_plot_given_runtimes(key_list=[DEFAULT_KEY, "attempt_1", "attempt_2", "attempt_3"], wtime_dict=CYTHON_ATTEMPTS, grid_sizes=[2**i for i in range(5, 11)], title="Cython: Attempt 3")
     # line_plot_given_runtimes(key_list=[DEFAULT_KEY, "attempt_1", "attempt_2", "attempt_3", "attempt_4 (chosen)"], wtime_dict=CYTHON_ATTEMPTS, grid_sizes=[2**i for i in range(5, 11)], title="Cython: Attempt 4")
     # line_plot_given_runtimes(key_list=[DEFAULT_KEY, CYTHON_KEY], wtime_dict=WTIMES_PRO, grid_sizes=[2**i for i in range(5, 13)], title="Final Optimized Cython Implementation")
+    # bar_plot_last_n_runtimes(key_list=[DEFAULT_KEY, CYTHON_KEY], wtime_dict=WTIMES_PRO, last_n=3, title="Cython vs Baseline (bigger grid sizes)")
 
     # $$$$$$$$$$$$$$$$$$$$ CYTHON+DASK PLOTS $$$$$$$$$$$$$$$$$$$$$$$$
     # line_plot_given_runtimes(key_list=[DASK_KEY, DEFAULT_KEY, CYTHON_KEY, CYTHON_DASK_KEY], wtime_dict=WTIMES_PRO, grid_sizes=grid_sizes, title="Cython + Dask Comparison")
     # bar_plot_last_n_runtimes(key_list=[DASK_KEY, DEFAULT_KEY, CYTHON_KEY, CYTHON_DASK_KEY], wtime_dict=WTIMES_PRO, last_n=3, title="Cython + Dask Comparison (bigger grid sizes)")
 
     # $$$$$$$$$$$$$$$$$$$$$$$$$ FINAL PLOT OF EVERYTHING $$$$$$$$$$$$$$$$$$$
-    line_plot_given_runtimes(key_list=WTIMES_PRO.keys(), wtime_dict=WTIMES_PRO, grid_sizes=grid_sizes, title="Finite Volume Optimizations")
-    bar_plot_last_n_runtimes(key_list=WTIMES_PRO.keys(), wtime_dict=WTIMES_PRO, last_n=3, title="Finite Volume Optimizations (larger grid sizes)")
+    # line_plot_given_runtimes(key_list=WTIMES_PRO.keys(), wtime_dict=WTIMES_PRO, grid_sizes=grid_sizes, title="Finite Volume Optimizations")
+    # bar_plot_last_n_runtimes(key_list=WTIMES_PRO.keys(), wtime_dict=WTIMES_PRO, last_n=3, title="Finite Volume Optimizations (larger grid sizes)")
+
+    # $$$$$$$$$$$$$$$$$$$$$$$$$$$ BASELINE PLOTS $$$$$$$$$$$$$$$$$$$$$$$$$
+    # line_plot_given_runtimes(key_list=[DEFAULT_KEY], wtime_dict=WTIMES_PRO, grid_sizes=grid_sizes, title="Baseline Runtime (M1 MacBook Pro, 16' 2021)")
+
+
     
