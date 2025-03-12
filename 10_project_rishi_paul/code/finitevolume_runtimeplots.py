@@ -194,6 +194,7 @@ def getFlux(rho_L, rho_R, vx_L, vx_R, vy_L, vy_R, P_L, P_R, gamma):
     return flux_Mass, flux_Momx, flux_Momy, flux_Energy
 
 
+# @profile
 def main(N=128, tEnd=2, plotRealTime=False, plotFinalPlot=False, terminate_using="I"):
     """ Finite Volume simulation """
 

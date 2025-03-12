@@ -158,6 +158,10 @@ if __name__== "__main__":
     # bar_plot_last_n_runtimes(key_list=[DASK_KEY, DEFAULT_KEY, CYTHON_KEY, CYTHON_DASK_KEY], wtime_dict=WTIMES_PRO, last_n=3, title="Cython + Dask Comparison (bigger grid sizes)")
 
     # $$$$$$$$$$$$$$$$$$$$$$$$$ FINAL PLOT OF EVERYTHING $$$$$$$$$$$$$$$$$$$
+    # line_plot_given_runtimes(key_list=[DEFAULT_KEY, TORCH_MPS_KEY], wtime_dict=WTIMES_PRO, grid_sizes=grid_sizes, title="Torch Comparison")
+    # bar_plot_last_n_runtimes(key_list=[DEFAULT_KEY, TORCH_MPS_KEY], wtime_dict=WTIMES_PRO, last_n=3, title="Torch Comparison")
+
+    # $$$$$$$$$$$$$$$$$$$$$$$$$ FINAL PLOT OF EVERYTHING $$$$$$$$$$$$$$$$$$$
     # line_plot_given_runtimes(key_list=WTIMES_PRO.keys(), wtime_dict=WTIMES_PRO, grid_sizes=grid_sizes, title="Finite Volume Optimizations")
     # bar_plot_last_n_runtimes(key_list=WTIMES_PRO.keys(), wtime_dict=WTIMES_PRO, last_n=3, title="Finite Volume Optimizations (larger grid sizes)")
 
