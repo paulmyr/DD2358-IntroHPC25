@@ -130,7 +130,16 @@
   \renewcommand{\headrule}{} % removes horizontal header line
 }
 %###############################################################################
-% Todo: define Title
+
+\newcommand\extrafootertext[1]{%
+    \bgroup
+    \renewcommand\thefootnote{\fnsymbol{footnote}}%
+    \renewcommand\thempfootnote{\fnsymbol{mpfootnote}}%
+    \footnotetext[0]{#1}%
+    \egroup
+}
+
+%###############################################################################
 
 \title{
   \normalsize{DD2358 VT25 Introduction to}\\
@@ -138,11 +147,11 @@
   \large{Project Report: Optimizing Finite-Volume Fluid Simulation}
 }
 \author{
-  \small Rishi Vijayvargiya\\[-0.75ex]
+  \small Rishi Vijayvargiya\textsuperscript{\textdagger}\\[-0.75ex]
 %  \footnotesize\texttt{MN: }\\[-1ex]
   \scriptsize\texttt{rishiv@kth.se}
   \and
-  \small Paul Mayer\\[-0.75ex]
+  \small Paul Mayer\textsuperscript{\textdagger}\\[-0.75ex]
 %  \footnotesize\texttt{MN: }\\[-1ex]
   \scriptsize\texttt{pmayer@kth.se}
 }
@@ -166,30 +175,34 @@
 %\setcounter{subsection}{1}
 
 %###############################################################################
+\makeatletter
+\renewcommand*{\@fnsymbol}[1]{\ensuremath{\ifcase#1\or \dagger\or \ddagger\or
+   \mathsection\or \mathparagraph\or \|\or **\or \dagger\dagger
+   \or \ddagger\ddagger \else\@ctrerr\fi}}
+\makeatother
 %###############################################################################
 
 \begin{document}
 \maketitle
+\extrafootertext{\textsuperscript{\textdagger}Authors made equal contribution to the project}
 \thispagestyle{firstpagestyle}
 
 % \tableofcontents
 \listoftodos
-\todo{Do we need to include the box-plot anywhere? }
-\todo{For the pytorch mps runtime, describe that it was obtained on m1 pro}
 \vspace{1em}
 
 % content begin
 %
 
 \section*{Prefix}
-The code for our project can be found at this location: \url{https://github.com/paulmyr/DD2358-HPC25/tree/master/10_project_rishi_paul}. The original code for this project is taken from the following \href{https://github.com/pmocz/finitevolume-python/blob/master/finitevolume.py}{GitHub repository}.\\
-The code is written by \href{https://pmocz.github.io}{Philip Mocz}. We expect to \underline{get a grade of \textbf{A}} (for the project and the course). Both group members made equal contributions to all parts of the project.
-We made following changes before starting with the project:
+The code for our project can be found at this location: \url{https://github.com/paulmyr/DD2358-HPC25/tree/master/10_project_rishi_paul}. The original code for this project is taken from the following \href{https://github.com/pmocz/finitevolume-python/blob/master/finitevolume.py}{GitHub repository}.
+The code is written by \href{https://pmocz.github.io}{Philip Mocz}.\\
 
-\begin{enumerate}
+We expect to get a grade of \textbf{A} (for the project and the course).
+Finally, we made following changes before starting with the project:
+\begin{itemize}
   \item Fixed a bug that resulted in an infinite loop when setting the \verb|plotRealTime| flag to \verb|False|.
-  \item ...\todo{Add more bugs that may come up!}
-\end{enumerate}
+\end{itemize}
 
 \tableofcontents
 \newpage
@@ -200,36 +213,49 @@ Philip Mocz created an which produces a visualization of the characteristic swir
 
 The Finite Volume method is a popular simulation technique to simulate fluids or partial differential equations that can be represented in a conservative form.
 This is often the case for equations that describe physical conservation laws.
-The Euler-Fluid-Equations (a simplifications of the Navier-Stokes-Equations) can be represented nebsts it's primitive description in such conservative form.
+The Euler-Fluid-Equations (a simplifications of the Navier-Stokes-Equations) can be represented --- besides it's primitive description --- in such conservative form.
 Within the algorithm, Philip Mosz makes use of both representations of the formula.
 He uses the primitive form to extrapolate values in time and space, but uses the conservative representation to derive the update formula.
-In some sorts, this gives us the best of both worlds.
-Extrapolating within the primitive form is numerically more stable whereas the conservative representation is used to compute the update efficiently.
-\todo{describe finite volume approach, maybe small image}
-\todo{loose a word or two about boundary conditions and initial values}
+Numerically, this achieves the best of both worlds.
+Extrapolating within the primitive form is more stable whereas the conservative representation is used to compute the update efficiently.
 
 The algorithm in principle works as follows:
 For each timestep and each cell do
 \begin{enumerate}
   \item Get cell central primitive variables (convert from conservative ones)
-  \item Calculate timestep (What does that mean exactly)
-  \item Calculate gradient of primitive vars (e.g using central differences)
-  \item Extrapolate prim. vars. in time ($\Delta t / 2$)
-  \item Extrapolate prim. vars. to faces ($\Delta x / 2$)
-  \item Compute Fluxes along each face
-  \item Update solution by adding Fluxes to conserv. vars
+  \item Calculate timestep size $\Delta t$
+  \item Calculate gradient using primitive variables (using central differences)
+  \item Extrapolate primitive variables in time
+  \item Extrapolate primitive variables to faces
+  \item Compute fluxes along each face
+  \item Update solution by adding fluxes to conservative variables
 \end{enumerate}
 
-Update Formula:
-\begin{equation}
-Q^{(n+1)} = Q^{(n)} - \Delta t \Delta x \sum_{j} \hat{F}_{ij}^{(n + \frac{1}{2})}
-\end{equation}
+First it is important to note, that all of these steps are computed for the density $\rho$, pressure $p$ as well as the velocity in both dimensions $v_x$ and $v_y$.
+These computations don't rely on each other and can therefore be performed in parallel.
+
+Second, each function call in itself usually performs a computation on the whole grid.
+All of these calculation are also embarassingly parallel.
+The original implementation makes use of this by vectorizing the computation (e.g. using \verb|np.roll|).
 
 We aim to introduce some optimization techniques that decrease the overall runtime of the computation.
-To achieve this, we use techniques obtained from the lectures, specifically using cython to use precompiled c code to reduce python overhead,
-introducing gpu accellerators using pytorch and investigate a distributed computation approach utilizing dask.
+To achieve this, we use techniques obtained from the lectures, specifically using cython to use precompiled c code to reduce python overhead and investigate a distributed computation approach utilizing dask.
+As a little bonus treat, we combined the dask and cython approach.
+
+Lastly, we investigated using gpu accellerators using pytorch.
+
 
 \section{Baseline tests}
+\subsection{Testing and profiling setup}
+All runtime tests that show results for a specific grid size were computed on a 2021 M1 Macbook Pro (16') if not explicity stated otherwise.
+For every grid we simulated 256 time steps without computing the visualization.
+Every test was run three times, runtimes were then averaged.
+
+Some of the profiling graphs are computed on a 2020 M1 Macbook Air, we specify it explicitly when this was done so.
+\todo[inline]{Do we need to include the box-plot anywhere?}
+All implementations were tested to ensure correctness.
+The final \verb|rho| values on the grid were compared between baseline and optimized implementations.
+All optimizations passed this test.
 
 \subsection{Runtime}
 We approached this problem by trying to get a basic understanding of what might be the runtime bottleneck.
@@ -250,10 +276,6 @@ Line #      Hits         Time  Per Hit   % Time  Line Contents
 All other function calls accumulated to the other 50\%, however each in itself were rather neglegtable (at most below 4\%).
 This indicated to us that we should focus our efforts onto this part of the computation.
 
-\subsection{Memory}
-\todo[inline]{Write everything...}
-
-\subsection{Hyperparameters\todo{This is a working title. Is there a better headline titel for this?}}
 The runtime of the simulation depends on multiple parameters.
 First and foremost the number of iterations:
 this regulates the total time (number of time steps) we want to simulate.
@@ -275,8 +297,24 @@ To measure runtime over a variety of gridsizes, we decided to keep the number of
 We simulated 256 timesteps over all grid sizes and performed each computation three times, which we then averaged. The \textit{baseline/default} referred to in this report code can be found in the \verb|finitevolume_runtimeplots.py| file at this location: \href{https://github.com/paulmyr/DD2358-HPC25/blob/master/10_project_rishi_paul/code/finitevolume_runtimeplots.py}{link}. This is the original implementation of the simulation.
 \todo{Insert graphic of all baseline runs!}
 
+\subsection{Memory}
+We measured the memory consumption of the simulation over the runtime on a 512x512 grid.
+Figure \ref{fig:memory_over_simulation} depicts the measurement we obtained using the mprof module in python.
+We see that once all memory has been allocated, all computations are performed inplace.
+This is good, since the reallocating memory and waiting for the garbage collector to free memory could lead to performance issues, especially on larger grids.
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=0.7\textwidth]{images/baseline/baseline_memory_512.png}
+  \caption{Memory consumption 512x512 grid measured on M1 MacBook Air}
+  \label{fig:memory_over_simulation}
+\end{figure}
+
 \section{Optimizations using Cython}
-Since \verb|getFlux| was the bottleneck for the simulation based on our profiling, we focused on optimizing this function using Cython. We had 4 attempts in total before we achieved a runtime that was better than the baseline. The code for this section is present in the \verb|cython/| directory of the repository. All our attempts can be found in the \verb|finitevolume_cython_lib.pyx| file here: \href{https://github.com/paulmyr/DD2358-HPC25/blob/master/10_project_rishi_paul/code/cython/finitevolume_cython_lib.pyx}{link}.  All runtimes presented in this section timed the simulation for 256 iterations using the different versions of \verb|getFlux|, and were obtained on a 2021 M1 Macbook Pro (16'). The \underline{line plots} of runtimes are \underline{logarithmic} (base 10). We also have tests in the \verb|test_cython_rho.py| file, which check that the final \verb|rho| visualized on the grid is similar for the chosen Cython optimization and the baseline.
+Since \verb|getFlux| was the bottleneck for the simulation based on our profiling, we focused on optimizing this function using Cython.
+We investigated four approaches in total, only one performed better than the baseline. \footnote{The code for this section is present in the \textit{cython/} directory of the repository \href{https://github.com/paulmyr/DD2358-HPC25/blob/master/10_project_rishi_paul/code/cython/finitevolume_cython_lib.pyx}{here}}.
+All runtimes presented in this section timed the simulation using different versions of the \verb|getFlux| method.
+The line plots of runtimes are using a log-log scale.
 
 \subsection{Attempt 1: Using \textit{np.asarray} With Minimal Changes}
 This implementation is present in the \href{https://github.com/paulmyr/DD2358-HPC25/blob/master/10_project_rishi_paul/code/cython/finitevolume_cython_lib.pyx#L8}{\textit{getFluxAsArray}} method of the Cython file above. Here, we extensively use Cython's \underline{typed memoryviews}, for both the arguments and the intermediate variables defined in the function. The memoryviews are converted to numpy arrays using \verb|np.asarray| to allow for vectorized operations, meaning there is minimal deviation from the structure of the original code. The performance of this attempt compared to the baseline is present in Figure \ref{fig:cython_attempts}. 
@@ -360,6 +398,7 @@ and tell pytorch to perform the computations using GPU compatible hardware.
 To compare the performance on a wider range of grid sizes, we chose to limit the simulation to a fixed number time steps.
 As one can see\todo{describe figure before referencing it} in the results of figure, making use of accelerators *greatly* improves the overall runtime for larger grid sizes.
 As noted above \todo{insert ref to figure}, for finer grids this means we simulate less time in total.
+\todo[inline]{For the pytorch mps runtime, describe that it was obtained on m1 pro}
 
 \section{Optimizations using Dask}
 We had 2 attempts at optimzing the baseline using Dask. The code for this section is present in the \verb|dask/| directory of the repository.  All runtimes presented in this section timed the simulation for 256 iterations using our different optimization attempts, and were obtained on a 2021 M1 Macbook Pro (16'). The \underline{line plots} of runtimes are \underline{logarithmic} (base 10). We also have tests in the \verb|test_dask_rho.py| file, which check that the final \verb|rho| visualized on the grid is similar for the chosen Dask optimization and the baseline. For all dask runs, the default scheduler settings were used, which on the environment stated above, gave us \underline{5 workers, 2 threads per worker}.
