@@ -235,15 +235,13 @@ First it is important to note, that all of these steps are computed for the dens
 These computations don't rely on each other and can therefore be performed in parallel.
 
 Second, each function call in itself usually performs a computation on the whole grid.
-All of these calculation are also embarassingly parallel.
 The original implementation makes use of this by vectorizing the computation (e.g. using \verb|np.roll|).
+These calculations can be parallelized --- they are in fact embarassingly parallel.
 
-We aim to introduce some optimization techniques that decrease the overall runtime of the computation.
+We aim to introduce optimizations that decrease the overall runtime of the computation.
 To achieve this, we use techniques obtained from the lectures, specifically using cython to use precompiled c code to reduce python overhead and investigate a distributed computation approach utilizing dask.
 As a little bonus treat, we combined the dask and cython approach.
-
-Lastly, we investigated using gpu accellerators using pytorch.
-
+Lastly, we investigated using GPU accellerators using pytorch.
 
 \section{Baseline tests}
 \subsection{Testing and profiling setup}
@@ -253,49 +251,58 @@ Every test was run three times, runtimes were then averaged.
 
 Some of the profiling graphs are computed on a 2020 M1 Macbook Air, we specify it explicitly when this was done so.
 \todo[inline]{Do we need to include the box-plot anywhere?}
-All implementations were tested to ensure correctness.
-The final \verb|rho| values on the grid were compared between baseline and optimized implementations.
-All optimizations passed this test.
+All implementations were tested to ensure correctness by comparing the final \verb|rho| values on the grid between baseline and optimized implementations.
+Every approach presented in this report passed this test.
 
 \subsection{Runtime}
 We approached this problem by trying to get a basic understanding of what might be the runtime bottleneck.
 For this we used the line profiler.
-We simulated on a 256x256 grid for 3749 iterations, which the script needs to perform a 2s simulation.
-We came to the conclusion that a large portion (nearly 50\% for a single iteration) of computation time is spent to compute the fluxes (\verb|getFlux| method).
+We simulated\footnote{using the MacBook Air (2020)} on a 256x256 grid for 256 iterations.
+We came to the conclusion that a large portion (nearly 50\%) of computation time is spent to compute the fluxes (\verb|getFlux| method).
 \begin{lstlisting}[language=bash,basicstyle=\scriptsize\ttfamily]
 Line #      Hits         Time  Per Hit   % Time  Line Contents
 ==============================================================
    195                                           @profile
    196                                           def main():
 [...]
-   270                                                   # compute fluxes
-   271      3694    5113424.0   1384.3     24.9          [...] = getFlux(...)
-   272      3694    4595361.0   1244.0     22.4          [...] = getFlux(...)
+   272                                               # compute fluxes (local Lax-Friedrichs/Rusanov)
+   273       256     357351.0   1395.9     25.0      flux_Mass_X, flux_Momx_X, flux_Momy_X,
+                                                         flux_Energy_X = getFlux(...)
+   274       256     320673.0   1252.6     22.4      flux_Mass_Y, flux_Momy_Y, flux_Momx_Y,
+                                                         flux_Energy_Y = getFlux(...)
 [...]
 \end{lstlisting}
-All other function calls accumulated to the other 50\%, however each in itself were rather neglegtable (at most below 4\%).
-This indicated to us that we should focus our efforts onto this part of the computation.
+All other function calls accumulated to the other 50\%, however each in itself were more or less neglegtable (at most below 4\%).
+This strongly incentivised to focus our efforts onto this part of the computation.
 
-The runtime of the simulation depends on multiple parameters.
-First and foremost the number of iterations:
-this regulates the total time (number of time steps) we want to simulate.
+The runtime of the simulation mostly depends on two parameters.
+First and foremost the number of time steps:
+Each time step is computed in one iteration of the main loop.
 Figure \ref{fig:runtime_per_iteration} displays the runtime the computation of each timestep needs.
-We can observe that the runtime per iteration is mostly consistant.
+We can observe that the runtime per iteration is mostly consistant over the course of the simulation.
 \begin{figure}[h]
   \centering
-  \includegraphics[width=0.7\textwidth]{images/baseline/baseline_performance.png}
+  \includegraphics[width=0.7\textwidth]{images/baseline/baseline_per_iteration_macair.png}
   \caption{Baseline Runtime per iteration on 2021 macbook pro}
   \label{fig:runtime_per_iteration}
 \end{figure}
-Important to note is that the total number of timesteps computed increases by introducing finer grid sizes.
+Important note:
+To simulate a fixed time, the total number of timesteps increases by increasing grid resolution.
 With other words, simulating two seconds using a fine grid uses more iterations than simulating two seconds using a corse grid. 
-The reason is that $dt$ is computed each loop, which is dependent on $dx$, the granularity of the mesh.
+The reason is that $dt$, which is computed each loop, is dependent on $dx$ --- the granularity of the mesh.
 
 The second important parameter is the grid size.
 Finer grids allow for higher precision but increase the computational complexity quadratically.
 To measure runtime over a variety of gridsizes, we decided to keep the number of time steps constant.
-We simulated 256 timesteps over all grid sizes and performed each computation three times, which we then averaged. The \textit{baseline/default} referred to in this report code can be found in the \verb|finitevolume_runtimeplots.py| file at this location: \href{https://github.com/paulmyr/DD2358-HPC25/blob/master/10_project_rishi_paul/code/finitevolume_runtimeplots.py}{link}. This is the original implementation of the simulation.
-\todo{Insert graphic of all baseline runs!}
+We simulated 256 timesteps over all grid sizes and performed each computation three times, which we then averaged.
+The \textit{baseline/default}\footnote{Code for baseline found \href{https://github.com/paulmyr/DD2358-HPC25/blob/master/10_project_rishi_paul/code/finitevolume_runtimeplots.py}{here}.} is the original implementation of the simulation.
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=0.7\textwidth]{images/baseline/baseline_performance.png}
+  \caption{Baseline Runtime per iteration on 2021 macbook pro}
+  \label{fig:runtime_baseline}
+\end{figure}
+Figure \ref{fig:runtime_baseline} vizualizes the walltimes for different grid sizes of the baseline implementation on a log-log scale.
 
 \subsection{Memory}
 We measured the memory consumption of the simulation over the runtime on a 512x512 grid.
@@ -314,19 +321,25 @@ This is good, since the reallocating memory and waiting for the garbage collecto
 Since \verb|getFlux| was the bottleneck for the simulation based on our profiling, we focused on optimizing this function using Cython.
 We investigated four approaches in total, only one performed better than the baseline. \footnote{The code for this section is present in the \textit{cython/} directory of the repository \href{https://github.com/paulmyr/DD2358-HPC25/blob/master/10_project_rishi_paul/code/cython/finitevolume_cython_lib.pyx}{here}}.
 All runtimes presented in this section timed the simulation using different versions of the \verb|getFlux| method.
-The line plots of runtimes are using a log-log scale.
 
 \subsection{Attempt 1: Using \textit{np.asarray} With Minimal Changes}
-This implementation is present in the \href{https://github.com/paulmyr/DD2358-HPC25/blob/master/10_project_rishi_paul/code/cython/finitevolume_cython_lib.pyx#L8}{\textit{getFluxAsArray}} method of the Cython file above. Here, we extensively use Cython's \underline{typed memoryviews}, for both the arguments and the intermediate variables defined in the function. The memoryviews are converted to numpy arrays using \verb|np.asarray| to allow for vectorized operations, meaning there is minimal deviation from the structure of the original code. The performance of this attempt compared to the baseline is present in Figure \ref{fig:cython_attempts}. 
-
-The performance here is \underline{slightly worse} than the baseline. We believe this can be explained by the very frequent calls to \verb|np.asarray|, which likely require interactions with the Python runtime, along with the fact that the code was largely unchanged apart from adding types to the memoryviews. The original code was vectorized incredibly well, so there were no easy performance gains (by optimizing nested \verb|for-| loops, for instance) that Cython could have automatically achieved without our intervention.
+For the first attempt, we extensively use Cython's \emph{typed memoryviews}; both for arguments and intermediate variables defined in the function.
+The memoryviews are converted to numpy arrays using \verb|np.asarray| to allow for vectorized operations.
+This way there is minimal deviation from the structure of the original code\footnote{Code found \href{https://github.com/paulmyr/DD2358-HPC25/blob/master/10_project_rishi_paul/code/cython/finitevolume_cython_lib.pyx\#L8}{here} (\textit{getFluxAsArray}).}.
+Figure \ref{fig:cython_attempts} depicts the performance of this attempt compared to the baseline, which is slightly worse.
+We believe this can be explained by the frequent calls to \verb|np.asarray|, which likely requires interactions with the Python runtime.
+The original code was vectorized incredibly well, so there were no easy performance gains (e.g. by optimizing nested \verb|for-| loops) that Cython could have automatically achieved without our intervention.
 
 \subsection{Attempt 2: Re-Implement Vectorized Arithmetic}
-This implementation is present in the \href{https://github.com/paulmyr/DD2358-HPC25/blob/master/10_project_rishi_paul/code/cython/finitevolume_cython_lib.pyx#L155}{\textit{getFluxAsLoops}} method of the Cython file. Using simple nested \verb|for-| loops, we re-implemented numpy's vectorized operations. For example, the addition of 2 numpy arrays \verb|a + b| was re-implemented with nested \verb|for-| loops using element-wise additions in the \href{https://github.com/paulmyr/DD2358-HPC25/blob/master/10_project_rishi_paul/code/cython/finitevolume_cython_lib.pyx#L91}{\textit{nested\_array\_addition}} method. We continued using typed memoryviews in all places. With this, our hope was that Cython would be able to optimize the simpler nested loops, leading to a better runtime. However, this was not the case. The comparison of this attempt with the baseline and Attempt-1 can be seen in 
-Figure \ref{fig:cython_attempts}. 
+We re-implemented\footnote{Code found \href{https://github.com/paulmyr/DD2358-HPC25/blob/master/10_project_rishi_paul/code/cython/finitevolume_cython_lib.pyx\#L155}{here} (\textit{getFluxAsLoops}).} numpy's vectorized operations using simple nested \verb|for-|loops.
+For example, the addition of 2 numpy arrays \verb|a + b| was re-implemented with nested \verb|for-|loops using element-wise additions.
+We continued using typed memoryviews in all places.
+We hoped that Cython would be able to optimize the simpler nested loops, leading to a better runtime; however, this was not the case.
+The comparison of this attempt with the baseline and Attempt-1 can be seen in Figure \ref{fig:cython_attempts}. 
 
-One explanation for the poor performance of this implementation can be the fact that each operation requires the program to iterate over the arrays multiple times. The original code contains various combination of such simpler operations to compute the intermediate variables. This could mean that despite the simpler loops to iterate over, we might be losing time because of the sheer number of such iterations that need to be performed. We tried to rectify this in our next attempt.
-
+One explanation for the poor performance of this implementation could be attributed to the fact that each operation requires the program to iterate over the arrays multiple times.
+The original code contains various combination of such simpler operations to compute the intermediate variables.
+Another issue could be the fact that numpy is very good at vectorizing these optimizations, whereas the used c-compiler of cython\todo{what compiler does cython use?} might not.
 \begin{figure}[h]
   \centering
   \includegraphics[width=0.7\textwidth]{images/cython/cython_attempt_4.png}
@@ -352,31 +365,53 @@ One explanation for the poor performance of this implementation can be the fact 
 % \end{figure}
 
 \subsection{Attempt 3: Single \textbf{Python} Loop}
-This implementation is present in the \href{https://github.com/paulmyr/DD2358-HPC25/blob/master/10_project_rishi_paul/code/cython/finitevolume_cython_lib.pyx#L287}{\textit{getFlux}} method of the Cython file. We observed that all the computations for the returned fluxes can be performend in an \textit{embarassingly parallel} manner: no cell of the retunred grids dependend on any other cell. Thus, iterating over the input grids one cell at a time and computing the resulting fluxes would give us the same result as the vectorized version. So, we implemented a \underline{single} nested loop in Python, where we compute each flux component one cell at a time. We still use typed memoryviews here, along with the disabling of some cython flags (such as \verb|boundscheck|, \verb|wraparound|) to help with speed. The comparison of this attempt with the previous attempts and baseline can be seen in Figure \ref{fig:cython_attempts}. 
+We observed that all the computations for the returned fluxes can be performend in an \textit{embarassingly parallel} manner: no cell of the retunred grids dependend on any other cell.
+Thus, iterating over the input grids one cell at a time and computing the resulting fluxes would give us the same result as the vectorized version.
+We implemented
+\footnote{Code found \href{https://github.com/paulmyr/DD2358-HPC25/blob/master/10_project_rishi_paul/code/cython/finitevolume_cython_lib.pyx\#L287}{here} \textit{(getFlux)}.}
+a \emph{single} nested loop in Python, where we compute each flux component one cell at a time.
+We still use typed memoryviews.
+We disabled some cython flags (such as \verb|boundscheck|, \verb|wraparound|) to help with speed.
+The comparison of this attempt with the previous attempts and baseline can be seen in Figure \ref{fig:cython_attempts}. 
 
-The performance of this attempt was the \textbf{worse} out of all attempts. This surprised us: since we believed that Cython would be able to minimize the number of calls to the Python runtime because the nested loops involved only arithmetic operations on elements of typed memoryviews. On examining the HTML file generated using the \verb|cython -a ...| command, we observed that there still seemed to be heavy Python runtime calls for computations, particularly those that involved accessing elements of the typed memoryviews (can be seen in \hyperref[fig:cython_attempt_3_annotated]{Appendix}). These frequent reliance on the Python runtime could have reduced the number of optimizations that Cython was able to make to the nested \verb|for-| loop, leading to a worse performance.
+The performance was the worst out of all attempts.
+This was suprising to us: we believed that Cython would be able to minimize the number of calls to the Python runtime because the nested loops involved only arithmetic operations on elements of typed memoryviews.
+However, on examining the HTML file generated using the \verb|cython -a ...| command, we still observed heavy Python runtime calls for computations, particularly those that involved accessing elements of the typed memoryviews \footnote{can be seen in \hyperref[fig:cython_attempt_3_annotated]{Appendix}}.
+The frequent callbacks to the Python runtime must have reduced the number of optimizations that Cython was able to make --- leading to worse performance.
 
 \subsection{Attempt 4 (Chosen Optimization): Single \textbf{C} Loop}
-This implementation is present in the \href{https://github.com/paulmyr/DD2358-HPC25/blob/master/10_project_rishi_paul/code/cython/finitevolume_cython_lib.pyx#L359}{\textit{getFluxRawC}} method of the Cython file. We believed our intuition of using a single \verb|for-| loop was correct. However Cython was not able to prevent the Python runtime interactions because of the reasons listed above. Thus, we decided to reimplement the core logic of the original \verb|getFlux| method in C ourselves. The syntax and structure of the implementation was inspired by the example presnet in the Cython documentation (\href{https://docs.cython.org/en/latest/src/userguide/memoryviews.html#pass-data-from-a-c-function-via-pointer}{link}). The C-implementation of the \verb|getFlux| loop-logic can be found in the \verb|flux.c| file \href{https://github.com/paulmyr/DD2358-HPC25/blob/master/10_project_rishi_paul/code/cython/flux.c}{link}. The numpy arrays passed to the \verb|getFluxRawC| function appear to be in contiguous row-major (C) order, which makes the port of the python code to C easier. We also have correctness tests in the \verb|flux_test.py| file (\href{https://github.com/paulmyr/DD2358-HPC25/blob/master/10_project_rishi_paul/code/cython/flux_test.py}{link}) to verify similarity between the default \verb|getFlux| and \verb|getFluxRawC|. We still use typed memoryviews for the numpy arrays, along with disablement of some Cython flags. 
+We believed our intuition of using a single \verb|for-| loop was correct.
+However Cython was not able to prevent the Python runtime interactions because of the reasons listed above.
+Thus, we decided to reimplement\footnote{Code found \href{https://github.com/paulmyr/DD2358-HPC25/blob/master/10_project_rishi_paul/code/cython/finitevolume_cython_lib.pyx\#L359}{here} \emph{(getFluxRawC)}.} the core logic of the original \verb|getFlux| method in C ourselves.
+The syntax and structure of the implementation was inspired by the example presnet in the Cython documentation (\href{https://docs.cython.org/en/latest/src/userguide/memoryviews.html\#pass-data-from-a-c-function-via-pointer}{link})
+The C-implementation of the \verb|getFlux| loop-logic can be found in the \verb|flux.c| file \href{https://github.com/paulmyr/DD2358-HPC25/blob/master/10_project_rishi_paul/code/cython/flux.c}{link}.
+The numpy arrays passed to the \verb|getFluxRawC| function appear to be in contiguous row-major (C) order, which makes the port of the python code to C easier.
+We also have correctness tests in the \verb|flux_test.py| file (\href{https://github.com/paulmyr/DD2358-HPC25/blob/master/10_project_rishi_paul/code/cython/flux_test.py}{link}) to verify similarity between the default \verb|getFlux| and \verb|getFluxRawC|.
+We still use typed memoryviews for the numpy arrays, along with disablement of some Cython flags. 
 
-The runtime-comparison of this approach with the other attempts and baseline is present in Figure \ref{fig:cython_attempts}. This is the best out of all approaches, and is \underline{\textbf{better than the baseline}} for all grid sizes. We believe this highlights that our intuition of performing everything in one-loop was correct, along with our belief thatCython was unable to correctly optimize our implementation in Attempt-3. In Figure \ref{fig:cython_final_plot}, we see that the performance of this approach remains better than the baseline for grid sizes 2048 and 4096. The bar graphs in Figure \ref{fig:cython_final_bar} highlights the performance difference of this Cython optimization over the baseline. This was chosen as our Cython optimization of the original problem, and the code used for generating the plots and running the simulation is in the \verb|finitevolume_cython.py| file (\href{https://github.com/paulmyr/DD2358-HPC25/blob/master/10_project_rishi_paul/code/cython/finitevolume_cython.py}{link})
 
- \begin{figure}[h!]
-    \begin{minipage}{0.5\textwidth}
-        \centering
-        \includegraphics[width=\linewidth]{images/cython/cython_final_plot.png}
-       \caption{Line Plot}
-        \label{fig:cython_final_plot}
-    \end{minipage}
-    \hspace{0.1cm}
-    \begin{minipage}{0.5\textwidth}
-        \centering
-        \includegraphics[width=\linewidth]{images/cython/cython_final_bar.png}
-       \caption{Bar Graph}
-       \label{fig:cython_final_bar}
+The runtime-comparison of this approach with the other attempts and baseline is present in Figure \ref{fig:cython_attempts}.
+This is the best out of all approaches, and is \underline{\textbf{better than the baseline}} for all grid sizes.
+We believe this highlights that our intuition of performing everything in one-loop was correct, along with our belief thatCython was unable to correctly optimize our implementation in Attempt-3.
+In Figure \ref{fig:cython_final_plot}, we see that the performance of this approach remains better than the baseline for grid sizes 2048 and 4096.
+The bar graphs in Figure \ref{fig:cython_final_bar} highlights the performance difference of this Cython optimization over the baseline.
+This was chosen as our Cython optimization of the original problem, and the code used for generating the plots and running the simulation is in the \verb|finitevolume_cython.py| file (\href{https://github.com/paulmyr/DD2358-HPC25/blob/master/10_project_rishi_paul/code/cython/finitevolume_cython.py}{link})
+\begin{figure}[h!]
+   \begin{minipage}{0.5\textwidth}
+       \centering
+       \includegraphics[width=\linewidth]{images/cython/cython_final_plot.png}
+      \caption{Line Plot}
+       \label{fig:cython_final_plot}
    \end{minipage}
-   \caption{Cython Attempt 4 vs Baseline}
- \end{figure}
+   \hspace{0.1cm}
+   \begin{minipage}{0.5\textwidth}
+       \centering
+       \includegraphics[width=\linewidth]{images/cython/cython_final_bar.png}
+      \caption{Bar Graph}
+      \label{fig:cython_final_bar}
+  \end{minipage}
+  \caption{Cython Attempt 4 vs Baseline}
+\end{figure}
 
 %\begin{figure}[h]
 %  \centering
@@ -401,9 +436,17 @@ As noted above \todo{insert ref to figure}, for finer grids this means we simula
 \todo[inline]{For the pytorch mps runtime, describe that it was obtained on m1 pro}
 
 \section{Optimizations using Dask}
-We had 2 attempts at optimzing the baseline using Dask. The code for this section is present in the \verb|dask/| directory of the repository.  All runtimes presented in this section timed the simulation for 256 iterations using our different optimization attempts, and were obtained on a 2021 M1 Macbook Pro (16'). The \underline{line plots} of runtimes are \underline{logarithmic} (base 10). We also have tests in the \verb|test_dask_rho.py| file, which check that the final \verb|rho| visualized on the grid is similar for the chosen Dask optimization and the baseline. For all dask runs, the default scheduler settings were used, which on the environment stated above, gave us \underline{5 workers, 2 threads per worker}.
+We had 2 attempts at optimzing the baseline using Dask.
+The code for this section is present in the \verb|dask/| directory of the repository.
+All runtimes presented in this section timed the simulation for 256 iterations using our different optimization attempts, and were obtained on a 2021 M1 Macbook Pro (16').
+The \underline{line plots} of runtimes are \underline{logarithmic} (base 10).
+We also have tests in the \verb|test_dask_rho.py| file, which check that the final \verb|rho| visualized on the grid is similar for the chosen Dask optimization and the baseline.
+For all dask runs, the default scheduler settings were used, which on the environment stated above, gave us \underline{5 workers, 2 threads per worker}.
 
-The fact that each iteration of the simulation dependend on the outputs of the previous iteration, coming up with Dask optimizations that delayed the call to \verb|compute()| till the last possible moment (preferably outside the loop), was difficult. Particularly, the termination condition of the original code dependend on the time parameter \verb|t|, which was updated in every iteration based on the value of \verb|dt| that was computed inside the loop. Thus, the 2 optimizations we tried respect this starting structure of the code, and consequently \verb|compute()| is called \underline{in each iteration}. While not a best pracitce, we were still able to obtain promising results from our second optimization.
+The fact that each iteration of the simulation dependend on the outputs of the previous iteration, coming up with Dask optimizations that delayed the call to \verb|compute()| till the last possible moment (preferably outside the loop), was difficult.
+Particularly, the termination condition of the original code dependend on the time parameter \verb|t|, which was updated in every iteration based on the value of \verb|dt| that was computed inside the loop.
+Thus, the 2 optimizations we tried respect this starting structure of the code, and consequently \verb|compute()| is called \underline{in each iteration}.
+While not a best pracitce, we were still able to obtain promising results from our second optimization.
 
 \begin{figure}[h]
   \centering
@@ -413,33 +456,54 @@ The fact that each iteration of the simulation dependend on the outputs of the p
 \end{figure}
 
 \subsection{Attempt 1: Dask Arrays}
-The code for this attempt can be found in the \verb|finitevolume_dask_opt1.py| file (\href{https://github.com/paulmyr/DD2358-HPC25/blob/master/10_project_rishi_paul/code/dask/finitevolume_dask_opt1.py}{link}). As noted earlier, \verb|getFlux| was the bottleneck for the baseline simulation, and it was \textit{embarassingly parallelizable} (no cell computation dependend on any other cell). So, we used \verb|map_blocks| from \verb|dask.arrays| on the \verb|getFlux| for the \verb|getFlux| method. We only used this for the compuatation of the fluxes in \verb|x-| direction first, hoping to extend it to \verb|y-| direction if the performance was good. We created dask arrays for the input to \verb|getFlux| in each iteration. We then called \verb|compute()| on the value returned by \verb|map_blocks| to obtain the fluxes in \verb|x-| direction in each loop iteration. The task-stream visualizations were done while running the experiment on a grid size of 128 till 2 seconds of \underline{simulated time}.
-
- \begin{figure}[h!]
-    \begin{minipage}{0.5\textwidth}
-        \centering
-        \includegraphics[width=\linewidth]{images/dask/dask_opt1_n_by_8.png}
-       \caption{Work Stream (64 chunks)}
-        \label{fig:dask_opt1_stream_64}
-    \end{minipage}
-    \hspace{0.1cm}
-    \begin{minipage}{0.5\textwidth}
-        \centering
-        \includegraphics[width=\linewidth]{images/dask/dask_opt1_n_by_2.png}
-       \caption{Work Stream (4 chunks)}
-       \label{fig:dask_opt1_stream_4}
+The code for this attempt can be found in the \verb|finitevolume_dask_opt1.py| file (\href{https://github.com/paulmyr/DD2358-HPC25/blob/master/10_project_rishi_paul/code/dask/finitevolume_dask_opt1.py}{link}).
+As noted earlier, \verb|getFlux| was the bottleneck for the baseline simulation, and it was \textit{embarassingly parallelizable} (no cell computation dependend on any other cell).
+So, we used \verb|map_blocks| from \verb|dask.arrays| on the \verb|getFlux| for the \verb|getFlux| method.
+We only used this for the compuatation of the fluxes in \verb|x-| direction first, hoping to extend it to \verb|y-| direction if the performance was good.
+We created dask arrays for the input to \verb|getFlux| in each iteration.
+We then called \verb|compute()| on the value returned by \verb|map_blocks| to obtain the fluxes in \verb|x-| direction in each loop iteration.
+The task-stream visualizations were done while running the experiment on a grid size of 128 till 2 seconds of \underline{simulated time}.
+\begin{figure}[h!]
+   \begin{minipage}{0.5\textwidth}
+       \centering
+       \includegraphics[width=\linewidth]{images/dask/dask_opt1_n_by_8.png}
+      \caption{Work Stream (64 chunks)}
+       \label{fig:dask_opt1_stream_64}
    \end{minipage}
-   \caption{Work Stream for Dask Attempt 1}
-   \label{fig:dask_opt1_stream}
- \end{figure}
-We varied the chunk sizes of the dask arrays to see what impact they have on the runtime. A plot of this can be seen in the \hyperref[fig:dask_opt1_chunk_size]{Appendix}. In Figure \ref{fig:dask_attempts}, we present only the plot for the best chunk-size (which was 1). In summary, the performance decreased with an increase in chunk-sizes. 
+   \hspace{0.1cm}
+   \begin{minipage}{0.5\textwidth}
+       \centering
+       \includegraphics[width=\linewidth]{images/dask/dask_opt1_n_by_2.png}
+      \caption{Work Stream (4 chunks)}
+      \label{fig:dask_opt1_stream_4}
+  \end{minipage}
+  \caption{Work Stream for Dask Attempt 1}
+  \label{fig:dask_opt1_stream}
+\end{figure}
+We varied the chunk sizes of the dask arrays to see what impact they have on the runtime.
+A plot of this can be seen in the \hyperref[fig:dask_opt1_chunk_size]{Appendix}.
+In Figure \ref{fig:dask_attempts}, we present only the plot for the best chunk-size (which was 1).
+In summary, the performance decreased with an increase in chunk-sizes.
 
-The performance of this implementation \underline{always seems to be worse than the baseline}. We believe several factor could have contributed to this. Firstly, there is some overhead involved in dask having to create the dask arrays with the correct chunk sizes, allocating them to the workers, setting up the scheduler, etc. This overhead can be present in the form of communication between workers. This was observed on the task-stream for the computation on the Dask Dashboard. The red/dark-red observed in the task stream in Figure \ref{fig:dask_opt1_stream} indicates a lot of transfer between workers, as documented \href{https://docs.dask.org/en/stable/dashboard.html#task-stream}{here}. This was also present when we had fewer chunks than cores/workers (Figure \ref{fig:dask_opt1_stream_4}). Additionally, the call to compute in each loop iteration would also lead to a slowdown. 
+The performance of this implementation \underline{always seems to be worse than the baseline}.
+We believe several factor could have contributed to this.
+Firstly, there is some overhead involved in dask having to create the dask arrays with the correct chunk sizes, allocating them to the workers, setting up the scheduler, etc.
+This overhead can be present in the form of communication between workers.
+This was observed on the task-stream for the computation on the Dask Dashboard.
+The red/dark-red observed in the task stream in Figure \ref{fig:dask_opt1_stream} indicates a lot of transfer between workers, as documented \href{https://docs.dask.org/en/stable/dashboard.html\#task-stream}{here}.
+This was also present when we had fewer chunks than cores/workers (Figure \ref{fig:dask_opt1_stream_4}).
+Additionally, the call to compute in each loop iteration would also lead to a slowdown.
 
-We thought of some ideas to address some of our concerns here (such as trying to delay \verb|compute| for everythinf except \verb|dt|). However, our experience with Assignment 4's Bonus lead us to believe that even with fewer \verb|compute()| calls, the performance of dask-arrays in a single-machine environment would likely still be worse than the baseline (because of the set-up overhead discussed above). Thus, before doing this, we tried a different approach: \verb|dask delayed|. 
+We thought of some ideas to address some of our concerns here (such as trying to delay \verb|compute| for everythinf except \verb|dt|).
+However, our experience with Assignment 4's Bonus lead us to believe that even with fewer \verb|compute()| calls, the performance of dask-arrays in a single-machine environment would likely still be worse than the baseline (because of the set-up overhead discussed above).
+Thus, before doing this, we tried a different approach: \verb|dask delayed|.
 
 \subsection{Attempt 2 (Chosen Optimization): Dask Delayed}
-This code can be found in the file \verb|finitevolume_dask_opt2.py| (\href{https://github.com/paulmyr/DD2358-HPC25/blob/master/10_project_rishi_paul/code/dask/finitevolume_dask_opt1.py}{link}) Instead of focusing only on the parallelizability of \verb|getFlux|, we observed that there were several calls ot helper functions that were independent of each other. For instance, all calls to \verb|getGradient| in the simulation loop were independent of each other. So, we looked at the \textit{bigger picture} and decided to use dask-delayed to store the delayed tasks for each helper function in an array, and then calling \verb|dask.compute()| for each element of the task array. An example of this approach can be seen here (\href{https://github.com/paulmyr/DD2358-HPC25/blob/master/10_project_rishi_paul/code/dask/finitevolume_dask_opt2.py#L273}{link}). Each such helper function was tagged the \verb|@delayed| decorator. 
+This code can be found in the file \verb|finitevolume_dask_opt2.py| (\href{https://github.com/paulmyr/DD2358-HPC25/blob/master/10_project_rishi_paul/code/dask/finitevolume_dask_opt1.py}{link}) Instead of focusing only on the parallelizability of \verb|getFlux|, we observed that there were several calls ot helper functions that were independent of each other.
+For instance, all calls to \verb|getGradient| in the simulation loop were independent of each other.
+So, we looked at the \textit{bigger picture} and decided to use dask-delayed to store the delayed tasks for each helper function in an array, and then calling \verb|dask.compute()| for each element of the task array.
+An example of this approach can be seen here (\href{https://github.com/paulmyr/DD2358-HPC25/blob/master/10_project_rishi_paul/code/dask/finitevolume_dask_opt2.py\#L273}{link}).
+Each such helper function was tagged the \verb|@delayed| decorator.
 
 \begin{figure}[h]
   \centering
@@ -448,7 +512,13 @@ This code can be found in the file \verb|finitevolume_dask_opt2.py| (\href{https
   \label{fig:dask_opt2_stream}
 \end{figure}
 
-The performance of this implementation with Attempt-1 (dask-arrays) and baseline can be seen in Figure \ref{fig:dask_attempts}. We see that initially for very small grids, this attempt performs the worst. This could be because of the increased number of \verb|compute()| calls for each independent helper-function, which requires all parallel calls to complete before progressing. This could be overkill for small grids. \textit{However}, as the grid sizes increase, this attempt comes out on top. This indicates to us that as the grid-size increases, the sheer number of computations to be performed \underline{outweighs} the cost of the multiple \verb|compute()| calls (and other overhead required by dask-delayed): leading to a better performance when doing the computations in parallel for grid sizes 512 and 1024 (and likely even bigger grids) compared to the baseline. The improved performance compared to Attempt-1 could be explained by almost no interaction required between workers, as can be seen by the absence of red in the task-stream graph in Figure \ref{fig:dask_opt2_stream}. This was our chosen Dask optimization. 
+The performance of this implementation with Attempt-1 (dask-arrays) and baseline can be seen in Figure \ref{fig:dask_attempts}.
+We see that initially for very small grids, this attempt performs the worst.
+This could be because of the increased number of \verb|compute()| calls for each independent helper-function, which requires all parallel calls to complete before progressing.
+This could be overkill for small grids.
+\textit{However}, as the grid sizes increase, this attempt comes out on top. This indicates to us that as the grid-size increases, the sheer number of computations to be performed \underline{outweighs} the cost of the multiple \verb|compute()| calls (and other overhead required by dask-delayed): leading to a better performance when doing the computations in parallel for grid sizes 512 and 1024 (and likely even bigger grids) compared to the baseline.
+The improved performance compared to Attempt-1 could be explained by almost no interaction required between workers, as can be seen by the absence of red in the task-stream graph in Figure \ref{fig:dask_opt2_stream}.
+This was our chosen Dask optimization.
 
  \begin{figure}[h!]
     \begin{minipage}{0.5\textwidth}
@@ -467,53 +537,63 @@ The performance of this implementation with Attempt-1 (dask-arrays) and baseline
    \caption{Dask Attempt 2 vs Baseline}
  \end{figure}
 
-In Figure \ref{fig:dask_final_plot}, we see that the performance of this optimization remains better than the baseline for larger grids, as we hypothesized. Figure \ref{fig:dask_final_bar} highlights the time-difference that might be lost in the log-scale based line plot. 
+ In Figure \ref{fig:dask_final_plot}, we see that the performance of this optimization remains better than the baseline for larger grids, as we hypothesized.
+ Figure \ref{fig:dask_final_bar} highlights the time-difference that might be lost in the log-scale based line plot.
 
 \section{Bonus Optimization: Cython + Dask}
-We observed that for the 2 largest grid sizes (2048 and 4096), our Cython optimization performed \textbf{worse} than our Dask optimization. To us, this indicated that any performance advantage obtained from performing the time-consuming \verb|getFlux| operations in C was lost when it came to the sheer number of operations to be performed, thus giving our parallel Dask optimization an advantage. 
+We observed that for the 2 largest grid sizes (2048 and 4096), our Cython optimization performed \textbf{worse} than our Dask optimization.
+To us, this indicated that any performance advantage obtained from performing the time-consuming \verb|getFlux| operations in C was lost when it came to the sheer number of operations to be performed, thus giving our parallel Dask optimization an advantage.
 
-As a bonus, we decided to combine the two: we performed the \verb|getFluxRawC| computation (our Cython optimization) in parallel (using our Dask-Delayed optimization). The code for this can be found in the \verb|finitevolume_cython_dask.py| file (\href{https://github.com/paulmyr/DD2358-HPC25/blob/master/10_project_rishi_paul/code/cython/finitevolume_cython_dask.py}{link}), particularly \href{https://github.com/paulmyr/DD2358-HPC25/blob/master/10_project_rishi_paul/code/cython/finitevolume_cython_dask.py#L305}{this} line. 
+As a bonus, we decided to combine the two: we performed the \verb|getFluxRawC| computation (our Cython optimization) in parallel (using our Dask-Delayed optimization).
+The code for this can be found in the \verb|finitevolume_cython_dask.py| file (\href{https://github.com/paulmyr/DD2358-HPC25/blob/master/10_project_rishi_paul/code/cython/finitevolume_cython_dask.py}{link}), particularly \href{https://github.com/paulmyr/DD2358-HPC25/blob/master/10_project_rishi_paul/code/cython/finitevolume_cython_dask.py\#L305}{this} line.
 
- \begin{figure}[h!]
-    \begin{minipage}{0.5\textwidth}
-        \centering
-        \includegraphics[width=\linewidth]{images/cython_dask/cython_dask_final_plot.png}
-       \caption{Line Plot}
-        \label{fig:cython_dask_final_plot}
-    \end{minipage}
-    \hspace{0.1cm}
-    \begin{minipage}{0.5\textwidth}
-        \centering
-        \includegraphics[width=\linewidth]{images/cython_dask/cython_dask_final_bar.png}
-       \caption{Bar Graph}
-       \label{fig:cython_dask_final_bar}
+\begin{figure}[h!]
+   \begin{minipage}{0.5\textwidth}
+       \centering
+       \includegraphics[width=\linewidth]{images/cython_dask/cython_dask_final_plot.png}
+      \caption{Line Plot}
+       \label{fig:cython_dask_final_plot}
    \end{minipage}
-   \caption{Cython + Dask Awesomeness}
- \end{figure}
- 
- This lead to incredible results for larger grids, as can be seen in \ref{fig:cython_dask_final_plot}. The combined approach outperforms the approaches of the individual optimizations, and of the baseline. The bar graph in \ref{fig:cython_dask_final_bar} shows the runtimes in a non-lograithmic scale, highlighting the performance boost. For smaller grids, this appears to be between the Cython and Dask optimizations. This could be explained by the fact that the dask-overhead \textit{pulls up} the runtime compared to the sole Cython optimization, and the use of the optimized \verb|getFluxRawC| \textit{pulls down} the runtime compared compared to the sole Dask optimization. 
+   \hspace{0.1cm}
+   \begin{minipage}{0.5\textwidth}
+       \centering
+       \includegraphics[width=\linewidth]{images/cython_dask/cython_dask_final_bar.png}
+      \caption{Bar Graph}
+      \label{fig:cython_dask_final_bar}
+  \end{minipage}
+  \caption{Cython + Dask Awesomeness}
+\end{figure}
+
+This lead to incredible results for larger grids, as can be seen in \ref{fig:cython_dask_final_plot}.
+The combined approach outperforms the approaches of the individual optimizations, and of the baseline.
+The bar graph in \ref{fig:cython_dask_final_bar} shows the runtimes in a non-lograithmic scale, highlighting the performance boost.
+For smaller grids, this appears to be between the Cython and Dask optimizations.
+This could be explained by the fact that the dask-overhead \textit{pulls up} the runtime compared to the sole Cython optimization, and the use of the optimized \verb|getFluxRawC| \textit{pulls down} the runtime compared compared to the sole Dask optimization.
 
 \section{Conclusion}
-The final plot of baseline runtime, and of all the \underline{chosen} optimizations, can be seen in Figure \ref{fig:final_plot}. Figure \ref{fig:final_bar} shows the bar graphs for the largest 3 grid-sizes to highlight the performance improvements over the baseline. 
-
- \begin{figure}[h!]
-    \begin{minipage}{0.5\textwidth}
-        \centering
-        \includegraphics[width=\linewidth]{images/final/final_plot.png}
-       \caption{Line Plot}
-        \label{fig:final_plot}
-    \end{minipage}
-    \hspace{0.1cm}
-    \begin{minipage}{0.5\textwidth}
-        \centering
-        \includegraphics[width=\linewidth]{images/final/final_bar.png}
-       \caption{Bar Graph}
-       \label{fig:final_bar}
+The final plot of baseline runtime, and of all the \underline{chosen} optimizations, can be seen in Figure \ref{fig:final_plot}.
+Figure \ref{fig:final_bar} shows the bar graphs for the largest 3 grid-sizes to highlight the performance improvements over the baseline.
+\begin{figure}[h!]
+   \begin{minipage}{0.5\textwidth}
+       \centering
+       \includegraphics[width=\linewidth]{images/final/final_plot.png}
+      \caption{Line Plot}
+       \label{fig:final_plot}
    \end{minipage}
-   \caption{Cython + Dask Awesomeness}
- \end{figure}
-
-The trends and likely explanations for the trends observed in the runtime compared to the baseline have been discussed extensively in their respective sections. Here, we would like to make one final important observation about the general trends. For optimization approaches that require some overhead, whether it be initial or otherwise (such as moving data to the GPU, Dask-Delayed setup and \verb|compute()| calls, etc) -- approaches that work \textit{out of the box} without significant overhead seem to perform better (such as the Cython optimization and baseline). However, the advantages of this \textit{hit} taken by such overhead starts becoming apparent when the grid-sizes increase. This is when the sheer numbero of computations become overwhelming, and it helps the runtime to \textit{prepare} for such computations (with the overhead) and/or perform them in parallel: as can be seen by the better performance of the Dask, Dask with Cython, and the Torch implementations on larger grids.
+   \hspace{0.1cm}
+   \begin{minipage}{0.5\textwidth}
+       \centering
+       \includegraphics[width=\linewidth]{images/final/final_bar.png}
+      \caption{Bar Graph}
+      \label{fig:final_bar}
+  \end{minipage}
+  \caption{Cython + Dask Awesomeness}
+\end{figure}
+The trends and likely explanations for the trends observed in the runtime compared to the baseline have been discussed extensively in their respective sections.
+Here, we would like to make one final important observation about the general trends.
+For optimization approaches that require some overhead, whether it be initial or otherwise (such as moving data to the GPU, Dask-Delayed setup and \verb|compute()| calls, etc) -- approaches that work \textit{out of the box} without significant overhead seem to perform better (such as the Cython optimization and baseline).
+However, the advantages of this \textit{hit} taken by such overhead starts becoming apparent when the grid-sizes increase.
+This is when the sheer numbero of computations become overwhelming, and it helps the runtime to \textit{prepare} for such computations (with the overhead) and/or perform them in parallel: as can be seen by the better performance of the Dask, Dask with Cython, and the Torch implementations on larger grids.
 
 \section{Appendix}
 
