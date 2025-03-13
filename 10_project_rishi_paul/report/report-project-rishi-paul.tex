@@ -105,7 +105,6 @@
 \titleformat*{\subparagraph}{\large\bfseries}
 
 %###############################################################################
-% TODO define Headers and Fotter
 
 \pagestyle{fancy}
 \fancyhf{}
@@ -169,10 +168,6 @@
 \newcommand{\Prob}{\mathbb{P}}
 
 \renewcommand{\epsilon}{\varepsilon}
-
-% Todo: Set Counter to Excercise Sheet Number
-%\setcounter{section}{1}
-%\setcounter{subsection}{1}
 
 %###############################################################################
 \makeatletter
@@ -250,7 +245,6 @@ For every grid we simulated 256 time steps without computing the visualization.
 Every test was run three times, runtimes were then averaged.
 
 Some of the profiling graphs are computed on a 2020 M1 Macbook Air, we specify it explicitly when this was done so.
-\todo[inline]{Do we need to include the box-plot anywhere?}
 All implementations were tested to ensure correctness by comparing the final \verb|rho| values on the grid between baseline and optimized implementations.
 Every approach presented in this report passed this test.
 
@@ -319,7 +313,7 @@ This is good, since the reallocating memory and waiting for the garbage collecto
 
 \section{Optimizations using Cython}
 Since \verb|getFlux| was the bottleneck for the simulation based on our profiling, we focused on optimizing this function using Cython.
-We investigated four approaches in total, only one performed better than the baseline. \footnote{The code for this section is present in the \textit{cython/} directory of the repository \href{https://github.com/paulmyr/DD2358-HPC25/blob/master/10_project_rishi_paul/code/cython/finitevolume_cython_lib.pyx}{here}}.
+We investigated four approaches in total, only one performed better than the baseline\footnote{The code for this section is present in the \textit{cython/} directory of the repository \href{https://github.com/paulmyr/DD2358-HPC25/blob/master/10_project_rishi_paul/code/cython/finitevolume_cython_lib.pyx}{here}}.
 All runtimes presented in this section timed the simulation using different versions of the \verb|getFlux| method.
 
 \subsection{Attempt 1: Using \textit{np.asarray} With Minimal Changes}
@@ -412,6 +406,7 @@ This was chosen as our Cython optimization of the original problem, and the code
   \end{minipage}
   \caption{Cython Attempt 4 vs Baseline}
 \end{figure}
+\todo{replace minipage with subfigure!}
 
 %\begin{figure}[h]
 %  \centering
@@ -423,21 +418,36 @@ This was chosen as our Cython optimization of the original problem, and the code
 \section{Optimizations using Pytorch}
 The original implementation makes heavy use of numpy functionalities.
 All data is stored as numpy arrays that are incrementally updated using the computed fluxes.
-This provides an easy approach to move the computations on a GPU using pytorch.
+This provides an easy approach to move the computations on a GPU using pytorch\footnote{The code for this section is present in the \textit{torch/} directory of the repository \href{https://github.com/paulmyr/DD2358-HPC25/blob/master/10_project_rishi_paul/code/torch/runtimeplots_with_gpu.py}{here}.}.
 Pytorch's computations are run using tensors --- an immutable datatype that shares resemblence with numpy arrays.
 A big difference however is that tensor operations are supported to be computed using accelerators.
 Due to the fact that pytorch mirrors numpys interface, we simply need to convert said numpy arrays to pytorch tensors
 and tell pytorch to perform the computations using GPU compatible hardware.
-\todo[inline]{insert figure of GPU runtimes}
-
+\begin{figure}[h]
+   \begin{minipage}{0.5\textwidth}
+       \centering
+       \includegraphics[width=\linewidth]{images/torch/torch_mps_runtime.png}
+      \caption{Line Plot}
+       \label{fig:torch_plot}
+   \end{minipage}
+   \hspace{0.1cm}
+   \begin{minipage}{0.5\textwidth}
+       \centering
+       \includegraphics[width=\linewidth]{images/torch/torch_mps_bars.png}
+      \caption{Bar Graph}
+      \label{fig:torch_bar}
+  \end{minipage}
+  \caption{Runtime pytorch implementation vs baseline}
+  \label{fig:torch_runtime}
+\end{figure}
+\todo{replace minipage with subfigure}
 To compare the performance on a wider range of grid sizes, we chose to limit the simulation to a fixed number time steps.
 As one can see\todo{describe figure before referencing it} in the results of figure, making use of accelerators *greatly* improves the overall runtime for larger grid sizes.
 As noted above \todo{insert ref to figure}, for finer grids this means we simulate less time in total.
 \todo[inline]{For the pytorch mps runtime, describe that it was obtained on m1 pro}
 
 \section{Optimizations using Dask}
-We had 2 attempts at optimzing the baseline using Dask.
-The code for this section is present in the \verb|dask/| directory of the repository.
+We had 2 attempts at optimzing the baseline using Dask\footnote{The code for this section is present in the \textit{dask/} directory of the repository \href{https://github.com/paulmyr/DD2358-HPC25/blob/master/10_project_rishi_paul/code/dask/}{here}.}.
 All runtimes presented in this section timed the simulation for 256 iterations using our different optimization attempts, and were obtained on a 2021 M1 Macbook Pro (16').
 The \underline{line plots} of runtimes are \underline{logarithmic} (base 10).
 We also have tests in the \verb|test_dask_rho.py| file, which check that the final \verb|rho| visualized on the grid is similar for the chosen Dask optimization and the baseline.
@@ -456,9 +466,8 @@ While not a best pracitce, we were still able to obtain promising results from o
 \end{figure}
 
 \subsection{Attempt 1: Dask Arrays}
-The code for this attempt can be found in the \verb|finitevolume_dask_opt1.py| file (\href{https://github.com/paulmyr/DD2358-HPC25/blob/master/10_project_rishi_paul/code/dask/finitevolume_dask_opt1.py}{link}).
 As noted earlier, \verb|getFlux| was the bottleneck for the baseline simulation, and it was \textit{embarassingly parallelizable} (no cell computation dependend on any other cell).
-So, we used \verb|map_blocks| from \verb|dask.arrays| on the \verb|getFlux| for the \verb|getFlux| method.
+So, we used \verb|map_blocks| from \verb|dask.arrays| on the \verb|getFlux| for the \verb|getFlux| method\footnote{Code found \href{https://github.com/paulmyr/DD2358-HPC25/blob/master/10_project_rishi_paul/code/dask/finitevolume_dask_opt1.py}{here}.}.
 We only used this for the compuatation of the fluxes in \verb|x-| direction first, hoping to extend it to \verb|y-| direction if the performance was good.
 We created dask arrays for the input to \verb|getFlux| in each iteration.
 We then called \verb|compute()| on the value returned by \verb|map_blocks| to obtain the fluxes in \verb|x-| direction in each loop iteration.
@@ -480,6 +489,7 @@ The task-stream visualizations were done while running the experiment on a grid 
   \caption{Work Stream for Dask Attempt 1}
   \label{fig:dask_opt1_stream}
 \end{figure}
+\todo{replace minipage with subfigure}
 We varied the chunk sizes of the dask arrays to see what impact they have on the runtime.
 A plot of this can be seen in the \hyperref[fig:dask_opt1_chunk_size]{Appendix}.
 In Figure \ref{fig:dask_attempts}, we present only the plot for the best chunk-size (which was 1).
@@ -499,19 +509,17 @@ However, our experience with Assignment 4's Bonus lead us to believe that even w
 Thus, before doing this, we tried a different approach: \verb|dask delayed|.
 
 \subsection{Attempt 2 (Chosen Optimization): Dask Delayed}
-This code can be found in the file \verb|finitevolume_dask_opt2.py| (\href{https://github.com/paulmyr/DD2358-HPC25/blob/master/10_project_rishi_paul/code/dask/finitevolume_dask_opt1.py}{link}) Instead of focusing only on the parallelizability of \verb|getFlux|, we observed that there were several calls ot helper functions that were independent of each other.
+Instead of focusing only on the parallelizability of \verb|getFlux|, we observed that there were several calls ot helper functions that were independent of each other.
 For instance, all calls to \verb|getGradient| in the simulation loop were independent of each other.
-So, we looked at the \textit{bigger picture} and decided to use dask-delayed to store the delayed tasks for each helper function in an array, and then calling \verb|dask.compute()| for each element of the task array.
-An example of this approach can be seen here (\href{https://github.com/paulmyr/DD2358-HPC25/blob/master/10_project_rishi_paul/code/dask/finitevolume_dask_opt2.py\#L273}{link}).
-Each such helper function was tagged the \verb|@delayed| decorator.
+So, we looked at the \textit{bigger picture} and decided to use dask-delayed to store the delayed tasks for each helper function in an array, and then calling \verb|dask.compute()| for each element of the task array\footnote{Code found \href{https://github.com/paulmyr/DD2358-HPC25/blob/master/10_project_rishi_paul/code/dask/finitevolume_dask_opt2.py}{here}.}.
 
+Each such helper function was tagged the \verb|@delayed| decorator.
 \begin{figure}[h]
   \centering
   \includegraphics[width=0.7\textwidth]{images/dask/dask_opt2.png}
   \caption{Task Stream for Dask-Delayed Optimization}
   \label{fig:dask_opt2_stream}
 \end{figure}
-
 The performance of this implementation with Attempt-1 (dask-arrays) and baseline can be seen in Figure \ref{fig:dask_attempts}.
 We see that initially for very small grids, this attempt performs the worst.
 This could be because of the increased number of \verb|compute()| calls for each independent helper-function, which requires all parallel calls to complete before progressing.
@@ -536,17 +544,15 @@ This was our chosen Dask optimization.
    \end{minipage}
    \caption{Dask Attempt 2 vs Baseline}
  \end{figure}
-
- In Figure \ref{fig:dask_final_plot}, we see that the performance of this optimization remains better than the baseline for larger grids, as we hypothesized.
- Figure \ref{fig:dask_final_bar} highlights the time-difference that might be lost in the log-scale based line plot.
+\todo{replace minipage with subfigure}
+In Figure \ref{fig:dask_final_plot}, we see that the performance of this optimization remains better than the baseline for larger grids, as we hypothesized.
+Figure \ref{fig:dask_final_bar} highlights the time-difference that might be lost in the log-scale based line plot.
 
 \section{Bonus Optimization: Cython + Dask}
 We observed that for the 2 largest grid sizes (2048 and 4096), our Cython optimization performed \textbf{worse} than our Dask optimization.
 To us, this indicated that any performance advantage obtained from performing the time-consuming \verb|getFlux| operations in C was lost when it came to the sheer number of operations to be performed, thus giving our parallel Dask optimization an advantage.
 
-As a bonus, we decided to combine the two: we performed the \verb|getFluxRawC| computation (our Cython optimization) in parallel (using our Dask-Delayed optimization).
-The code for this can be found in the \verb|finitevolume_cython_dask.py| file (\href{https://github.com/paulmyr/DD2358-HPC25/blob/master/10_project_rishi_paul/code/cython/finitevolume_cython_dask.py}{link}), particularly \href{https://github.com/paulmyr/DD2358-HPC25/blob/master/10_project_rishi_paul/code/cython/finitevolume_cython_dask.py\#L305}{this} line.
-
+As a bonus, we decided to combine the two: we performed the \verb|getFluxRawC| computation (our Cython optimization) in parallel, using our Dask-Delayed optimization\footnote{Code found \href{https://github.com/paulmyr/DD2358-HPC25/blob/master/10_project_rishi_paul/code/cython/finitevolume_cython_dask.py\#L305}{here}.}.
 \begin{figure}[h!]
    \begin{minipage}{0.5\textwidth}
        \centering
@@ -563,7 +569,7 @@ The code for this can be found in the \verb|finitevolume_cython_dask.py| file (\
   \end{minipage}
   \caption{Cython + Dask Awesomeness}
 \end{figure}
-
+\todo{replace minipage with subfigure}
 This lead to incredible results for larger grids, as can be seen in \ref{fig:cython_dask_final_plot}.
 The combined approach outperforms the approaches of the individual optimizations, and of the baseline.
 The bar graph in \ref{fig:cython_dask_final_bar} shows the runtimes in a non-lograithmic scale, highlighting the performance boost.
@@ -589,14 +595,15 @@ Figure \ref{fig:final_bar} shows the bar graphs for the largest 3 grid-sizes to 
   \end{minipage}
   \caption{Cython + Dask Awesomeness}
 \end{figure}
+\todo{replace minipage with subfigure}
 The trends and likely explanations for the trends observed in the runtime compared to the baseline have been discussed extensively in their respective sections.
 Here, we would like to make one final important observation about the general trends.
 For optimization approaches that require some overhead, whether it be initial or otherwise (such as moving data to the GPU, Dask-Delayed setup and \verb|compute()| calls, etc) -- approaches that work \textit{out of the box} without significant overhead seem to perform better (such as the Cython optimization and baseline).
 However, the advantages of this \textit{hit} taken by such overhead starts becoming apparent when the grid-sizes increase.
 This is when the sheer numbero of computations become overwhelming, and it helps the runtime to \textit{prepare} for such computations (with the overhead) and/or perform them in parallel: as can be seen by the better performance of the Dask, Dask with Cython, and the Torch implementations on larger grids.
 
+\newpage
 \section{Appendix}
-
 \subsection{Cython Attempt 3: Python Runtime Interactions}
 \begin{figure}[H]
   \centering
@@ -612,6 +619,18 @@ This is when the sheer numbero of computations become overwhelming, and it helps
   \caption{Dask Attempt 1: Chunk Size Variation}
   \label{fig:dask_opt1_chunk_size}
 \end{figure}
+
+\subsection{Runtime variation}
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.9\textwidth]{images/misc/boxplot_128grid_2sec}
+  \caption{Runtime variation of different implementations}
+  \label{fig:runtime_boxplot}
+\end{figure}
+For completness, we explored how volatile the runtimes were for different implementations.
+However, on the MacBook Pro we could not find any indication that some implementation varied significantly more than others.
+Figure\ref{fig:runtime_boxplot} shows a boxplot over runtimes simulating 2s, each performed 20 times using a grid of 128x128.
+As we can see, runtimes remained consistent, we did not persue this further.
 
 % content end
 %###############################################################################
